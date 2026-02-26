@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: demo-app
+
+resources:
+  - namespace.yaml
+  - rollout.yaml
+  - analysistemplate.yaml
+  - service-stable.yaml
+  - service-canary.yaml
+  - gateway.yaml
+  - virtualservice.yaml
+
+commonLabels:
+  app.kubernetes.io/name: demo-app
+  app.kubernetes.io/part-of: argo-rollouts-demo
+
+images:
+  - name: quay.io/kevindubois/argo-rollouts-quarkus-demo
+    newTag: 1.0.0
+
+# Made with Bob

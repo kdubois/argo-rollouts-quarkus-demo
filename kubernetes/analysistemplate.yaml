@@ -1,0 +1,95 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: ai-analysis
+  namespace: demo-app
+spec:
+  args:
+  - name: service-name
+  - name: stable-pod-label
+  - name: canary-pod-label
+  - name: namespace
+  - name: canary-pod
+  metrics:
+  - name: ai-deployment-analysis
+    interval: 30s
+    count: 3
+    successCondition: result.decision == "proceed"
+    failureCondition: result.decision == "rollback"
+    provider:
+      plugin:
+        ai:
+          # AI plugin configuration
+          mode: "agent"  # Use agent-based analysis
+          context:
+            deployment:
+              name: "demo-app"
+              namespace: "{{args.namespace}}"
+              canaryPod: "{{args.canary-pod}}"
+            labels:
+              stable: "{{args.stable-pod-label}}"
+              canary: "{{args.canary-pod-label}}"
+          queries:
+            # Success rate from application metrics
+            - name: "success_rate"
+              query: |
+                sum(rate(http_requests_success_total{app="demo-app"}[1m])) 
+                / 
+                sum(rate(http_requests_total{app="demo-app"}[1m])) * 100
+              threshold: 95
+              
+            # Error rate
+            - name: "error_rate"
+              query: |
+                sum(rate(http_requests_error_total{app="demo-app"}[1m])) 
+                / 
+                sum(rate(http_requests_total{app="demo-app"}[1m])) * 100
+              threshold: 5
+              
+            # Request latency (p95)
+            - name: "latency_p95"
+              query: |
+                histogram_quantile(0.95, 
+                  sum(rate(http_request_duration_seconds_bucket{app="demo-app"}[1m])) by (le)
+                )
+              threshold: 0.5
+              
+            # Pod health from Istio metrics
+            - name: "istio_success_rate"
+              query: |
+                sum(rate(istio_requests_total{
+                  reporter="source",
+                  destination_service=~"{{args.service-name}}",
+                  response_code!~"5.*"
+                }[1m]))
+                /
+                sum(rate(istio_requests_total{
+                  reporter="source",
+                  destination_service=~"{{args.service-name}}"
+                }[1m])) * 100
+              threshold: 95
+          
+          # AI analysis instructions
+          instructions: |
+            Analyze the deployment metrics for the demo-app canary deployment.
+            
+            Key metrics to evaluate:
+            1. Success rate should be >= 95%
+            2. Error rate should be <= 5%
+            3. P95 latency should be < 500ms
+            4. Istio success rate should be >= 95%
+            
+            Consider:
+            - Trends over time (improving or degrading)
+            - Comparison between stable and canary versions
+            - Any anomalies or spikes in error rates
+            - Pod health and readiness status
+            
+            Decision criteria:
+            - PROCEED: All metrics are healthy and within thresholds
+            - ROLLBACK: Any critical metric fails or shows degradation
+            - PAUSE: Metrics are borderline, need more data
+            
+            Provide reasoning for your decision and highlight any concerns.
+
+# Made with Bob

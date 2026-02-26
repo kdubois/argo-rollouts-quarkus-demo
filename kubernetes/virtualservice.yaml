@@ -1,0 +1,21 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: demo-app-vsvc
+  namespace: demo-app
+spec:
+  gateways:
+  - demo-app-gateway
+  hosts:
+  - "*"
+  http:
+  - name: primary        # referenced in canary.trafficRouting.istio.virtualService.routes
+    route:
+    - destination:
+        host: demo-app-stable # referenced in canary.stableService
+      weight: 100
+    - destination:
+        host: demo-app-canary # referenced in canary.canaryService
+      weight: 0
+
+# Made with Bob

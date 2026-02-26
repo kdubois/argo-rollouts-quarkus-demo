@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Argo Rollouts Demo - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-healthy {
+            background: #10b981;
+        }
+
+        .status-degraded {
+            background: #f59e0b;
+        }
+
+        .status-failed {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e5e7eb;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 15px 0;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #059669);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .progress-fill.warning {
+            background: linear-gradient(90deg, #f59e0b, #d97706);
+        }
+
+        .progress-fill.danger {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+        }
+
+        .traffic-split {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .traffic-item {
+            flex: 1;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .traffic-stable {
+            background: #dbeafe;
+            border: 2px solid #3b82f6;
+        }
+
+        .traffic-canary {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+        }
+
+        .traffic-percentage {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .traffic-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .scenario-controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+            transform: scale(1.05);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: scale(1.05);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .ai-analysis {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .ai-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .ai-icon {
+            width: 24px;
+            height: 24px;
+            border: 3px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .metric-box {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-box-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .metric-box-label {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .alert-warning {
+            background: #fef3c7;
+            color: #92400e;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .alert-danger {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Argo Rollouts AI Plugin Demo</h1>
+            <p>Progressive Delivery with AI-Powered Analysis</p>
+            <div class="version-badge">Version: {version}</div>
+        </div>
+
+        <div id="alert" class="alert"></div>
+
+        <div class="dashboard-grid">
+            <!-- Deployment Status Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Deployment Status</h2>
+                    <div id="statusIndicator" class="status-indicator status-healthy"></div>
+                </div>
+                <div class="metric-value" id="deploymentStatus">Healthy</div>
+                <div class="metric-label">Current State</div>
+                <div class="progress-bar">
+                    <div id="successRateBar" class="progress-fill" style="width: 99%">99%</div>
+                </div>
+                <div class="metric-label">Success Rate</div>
+            </div>
+
+            <!-- Traffic Split Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Traffic Distribution</h2>
+                </div>
+                <div class="traffic-split">
+                    <div class="traffic-item traffic-stable">
+                        <div class="traffic-percentage" id="stableTraffic">80%</div>
+                        <div class="traffic-label">Stable</div>
+                    </div>
+                    <div class="traffic-item traffic-canary">
+                        <div class="traffic-percentage" id="canaryTraffic">20%</div>
+                        <div class="traffic-label">Canary</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metrics Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Real-time Metrics</h2>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <div class="metric-box-value" id="requestCount">0</div>
+                        <div class="metric-box-label">Requests</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-box-value" id="errorRate">0%</div>
+                        <div class="metric-box-label">Error Rate</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Analysis Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">AI Analysis</h2>
+            </div>
+            <div class="ai-analysis">
+                <div class="ai-status">
+                    <div id="aiIcon" class="ai-icon"></div>
+                    <span id="aiStatusText">Monitoring deployment metrics...</span>
+                </div>
+                <div id="aiMessage">The AI plugin is continuously analyzing deployment health, success rates, and error patterns to determine if the rollout should proceed or rollback.</div>
+            </div>
+        </div>
+
+        <!-- Scenario Controls Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Demo Scenarios</h2>
+            </div>
+            <p style="margin-bottom: 15px; color: #666;">
+                Switch between scenarios to demonstrate successful and failed deployments.
+                Current scenario: <strong id="currentScenario">{scenario}</strong>
+            </p>
+            <div class="scenario-controls">
+                <button class="btn btn-success" onclick="switchScenario('happy')">
+                    ✓ Happy Path
+                </button>
+                <button class="btn btn-danger" onclick="switchScenario('failure')">
+                    ✗ Failure Scenario
+                </button>
+            </div>
+            <p style="margin-top: 15px; font-size: 0.9rem; color: #666;">
+                Note: Scenario changes require redeploying the application with the new SCENARIO_MODE environment variable.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>Powered by Quarkus • Argo Rollouts • AI Analysis</p>
+        </div>
+    </div>
+
+    <script>
+        let updateInterval;
+        let currentScenario = '{scenario}';
+
+        // Update dashboard data
+        async function updateDashboard() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                // Update deployment status
+                document.getElementById('deploymentStatus').textContent = 
+                    data.status.charAt(0).toUpperCase() + data.status.slice(1);
+                
+                // Update status indicator
+                const indicator = document.getElementById('statusIndicator');
+                indicator.className = 'status-indicator';
+                if (data.successRate >= 95) {
+                    indicator.classList.add('status-healthy');
+                } else if (data.successRate >= 80) {
+                    indicator.classList.add('status-degraded');
+                } else {
+                    indicator.classList.add('status-failed');
+                }
+
+                // Update success rate
+                const successRate = Math.round(data.successRate);
+                const bar = document.getElementById('successRateBar');
+                bar.style.width = successRate + '%';
+                bar.textContent = successRate + '%';
+                bar.className = 'progress-fill';
+                if (successRate < 80) {
+                    bar.classList.add('danger');
+                } else if (successRate < 95) {
+                    bar.classList.add('warning');
+                }
+
+                // Update request count
+                document.getElementById('requestCount').textContent = data.requestCount;
+
+                // Update error rate
+                const errorRate = Math.round(100 - data.successRate);
+                document.getElementById('errorRate').textContent = errorRate + '%';
+
+                // Update AI analysis
+                updateAIAnalysis(data);
+
+                // Update current scenario display
+                currentScenario = data.scenario;
+                document.getElementById('currentScenario').textContent = currentScenario;
+
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+                showAlert('Error fetching status data', 'danger');
+            }
+        }
+
+        function updateAIAnalysis(data) {
+            const aiStatusText = document.getElementById('aiStatusText');
+            const aiMessage = document.getElementById('aiMessage');
+            
+            if (data.successRate >= 95) {
+                aiStatusText.textContent = '✓ Analysis: Deployment is healthy';
+                aiMessage.textContent = 'All metrics are within acceptable thresholds. The AI plugin recommends proceeding with the rollout to the next stage.';
+            } else if (data.successRate >= 80) {
+                aiStatusText.textContent = '⚠ Analysis: Deployment is degraded';
+                aiMessage.textContent = 'Success rate is below optimal levels. The AI plugin is monitoring closely and may recommend a rollback if metrics continue to degrade.';
+            } else {
+                aiStatusText.textContent = '✗ Analysis: Deployment has failed';
+                aiMessage.textContent = 'Critical failure detected! Success rate is below acceptable threshold. The AI plugin recommends immediate rollback to the stable version.';
+            }
+        }
+
+        function switchScenario(scenario) {
+            showAlert('To switch to ' + scenario + ' scenario, redeploy with SCENARIO_MODE=' + scenario, 'info');
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.className = 'alert alert-' + type + ' show';
+            alert.textContent = message;
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        // Simulate traffic split changes
+        function updateTrafficSplit() {
+            // In a real scenario, this would come from Istio/Argo Rollouts
+            // For demo, we'll simulate progressive traffic shift
+            const scenarios = [
+                { stable: 100, canary: 0 },
+                { stable: 80, canary: 20 },
+                { stable: 50, canary: 50 },
+                { stable: 0, canary: 100 }
+            ];
+            
+            const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+            document.getElementById('stableTraffic').textContent = randomScenario.stable + '%';
+            document.getElementById('canaryTraffic').textContent = randomScenario.canary + '%';
+        }
+
+        // Initialize dashboard
+        updateDashboard();
+        updateTrafficSplit();
+
+        // Update every 3 seconds
+        updateInterval = setInterval(() => {
+            updateDashboard();
+        }, 3000);
+
+        // Update traffic split every 10 seconds
+        setInterval(updateTrafficSplit, 10000);
+    </script>
+</body>
+</html>

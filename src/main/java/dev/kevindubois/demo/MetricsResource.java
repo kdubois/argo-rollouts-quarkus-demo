@@ -14,6 +14,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
@@ -21,6 +22,8 @@ import java.util.concurrent.atomic.AtomicLong;
 @Path("/api")
 @ApplicationScoped
 public class MetricsResource {
+
+    private static final Logger LOG = Logger.getLogger(MetricsResource.class);
 
     @Inject
     MeterRegistry registry;
@@ -105,6 +108,23 @@ public class MetricsResource {
         );
     }
 
+    @GET
+    @Path("/scenario")
+    @Produces(MediaType.APPLICATION_JSON)
+    public ScenarioInfo getScenarioInfo() {
+        return new ScenarioInfo(scenarioMode, appVersion);
+    }
+
+    public static class ScenarioInfo {
+        public String scenario;
+        public String version;
+
+        public ScenarioInfo(String scenario, String version) {
+            this.scenario = scenario;
+            this.version = version;
+        }
+    }
+
     @POST
     @Path("/scenario")
     @Produces(MediaType.APPLICATION_JSON)
@@ -127,10 +147,31 @@ public class MetricsResource {
             // Failure scenario: 70% success rate, higher latency
             isSuccess = Math.random() > 0.3;
             latencyMs = (long) (100 + Math.random() * 400); // 100-500ms
+            
+            // Log errors so AI agent can detect them - make them very obvious
+            if (!isSuccess) {
+                LOG.error("CRITICAL ERROR: Request failed with database connection timeout after " + latencyMs + "ms",
+                    new RuntimeException("Database connection pool exhausted - unable to acquire connection"));
+            } else if (latencyMs > 300) {
+                LOG.error("PERFORMANCE DEGRADATION: High latency detected: " + latencyMs + "ms - service is struggling");
+            }
+            
+            // Log periodic summary of failures
+            if (totalRequests.get() % 10 == 0) {
+                double currentSuccessRate = calculateSuccessRate();
+                if (currentSuccessRate < 0.8) {
+                    LOG.error("ALERT: Success rate dropped to " + String.format("%.1f%%", currentSuccessRate * 100) +
+                        " - CANARY DEPLOYMENT IS FAILING");
+                }
+            }
         } else {
             // Happy scenario: 99% success rate, low latency
             isSuccess = Math.random() > 0.01;
             latencyMs = (long) (10 + Math.random() * 40); // 10-50ms
+            
+            if (!isSuccess) {
+                LOG.warn("Occasional request failure: " + latencyMs + "ms");
+            }
         }
 
         requestTimer.record(Duration.ofMillis(latencyMs));

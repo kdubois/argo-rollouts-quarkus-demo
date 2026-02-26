@@ -1,9 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: demo-app
+  name: argo-rollouts-quarkus-demo
   labels:
-    istio-injection: enabled
-    app: argo-rollouts-demo
-
-# Made with Bob
+    sidecar.istio.io/inject: "true"
+spec: {}

@@ -1,61 +1,29 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: demo-app
-  namespace: demo-app
+  name: argo-rollouts-quarkus-demo
+  namespace: argo-rollouts-quarkus-demo
 spec:
-  replicas: 3
-  revisionHistoryLimit: 2
-  minReadySeconds: 10
+  replicas: 10
+  revisionHistoryLimit: 1
+  minReadySeconds: 5
   selector:
     matchLabels:
-      app: demo-app
+      app: argo-rollouts-quarkus-demo
   template:
     metadata:
       labels:
-        app: demo-app
+        app: argo-rollouts-quarkus-demo
         sidecar.istio.io/inject: "true"
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
-        prometheus.io/path: "/q/metrics"
     spec:
       containers:
-      - name: demo-app
-        image: quay.io/kevindubois/argo-rollouts-quarkus-demo:1.0.0
+      - name: argo-rollouts-quarkus-demo
+        image: quay.io/kevindubois/argo-rollouts-quarkus-demo
         imagePullPolicy: Always
         ports:
         - name: http
           containerPort: 8080
           protocol: TCP
-        env:
-        - name: SCENARIO_MODE
-          value: "happy"
-        - name: APP_VERSION
-          value: "1.0.0"
-        livenessProbe:
-          httpGet:
-            path: /q/health/live
-            port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          timeoutSeconds: 3
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /q/health/ready
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 3
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
   strategy:
     canary:
       # Add revision labels to stable and canary pods
@@ -66,35 +34,36 @@ spec:
         labels:
           role: canary
       analysis:
-        startingStep: 1 # Start analysis after first weight change
+        startingStep: 2 # delay starting analysis run until we have collected enough metrics
         args:
         - name: service-name
-          value: demo-app-canary.demo-app.svc.cluster.local
+          value: argo-rollouts-quarkus-demo-canary.argo-rollouts-quarkus-demo.svc.cluster.local
         - name: stable-pod-label
-          value: app=demo-app,role=stable
+          value: app=argo-rollouts-quarkus-demo,role=stable
         - name: canary-pod-label
-          value: app=demo-app,role=canary
+          value: app=argo-rollouts-quarkus-demo,role=canary
         - name: namespace
-          value: demo-app
+          value: argo-rollouts-quarkus-demo
         - name: canary-pod
           valueFrom:
             podTemplateHashValue: Latest
         templates:
-        - templateName: ai-analysis
-      canaryService: demo-app-canary
-      stableService: demo-app-stable
+          #- templateName: success-rate
+          - templateName: ai-analysis-agent
+      canaryService: argo-rollouts-quarkus-demo-canary
+      stableService: argo-rollouts-quarkus-demo-stable
       trafficRouting:
         istio:
           virtualService:
-            name: demo-app-vsvc
+            name: rollout-vsvc
             routes:
             - primary
       steps:
-      - setWeight: 20
-      - pause: { duration: 30s } # Collect initial metrics
-      - setWeight: 50
-      - pause: { duration: 60s } # Let AI analyze the deployment
+      - setWeight: 10
+      - pause: { duration: 20s } # 20 seconds to start gathering metrics before starting analysis
+      - setWeight: 30
+      - pause: { duration: 60s } # 60 seconds to let the analysis do its job
+      - setWeight: 60
+      - pause: { duration: 20s } # if everything is going well, continue rolling out
       - setWeight: 100
-      - pause: { duration: 20s } # Complete rollout
-
-# Made with Bob
+      - pause: { duration: 10s } # finish rolling out to everyone

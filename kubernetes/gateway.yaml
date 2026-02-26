@@ -1,8 +1,8 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
-  name: demo-app-gateway
-  namespace: demo-app
+  name: argo-rollouts-quarkus-demo-gateway
+  namespace: argo-rollouts-quarkus-demo
 spec:
   selector:
     istio: ingressgateway # use istio default controller
@@ -13,5 +13,3 @@ spec:
       protocol: HTTP
     hosts:
     - "*"
-
-# Made with Bob

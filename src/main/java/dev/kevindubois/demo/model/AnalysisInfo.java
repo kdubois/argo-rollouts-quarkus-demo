@@ -1,0 +1,17 @@
+package dev.kevindubois.demo.model;
+
+public record AnalysisInfo(
+    String phase,
+    String message,
+    Boolean successful
+) {
+    public static AnalysisInfo notStarted() {
+        return new AnalysisInfo(
+            "Pending",
+            "Analysis has not started yet",
+            null
+        );
+    }
+}
+
+// Made with Bob

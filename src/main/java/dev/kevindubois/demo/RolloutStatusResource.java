@@ -26,10 +26,10 @@ public class RolloutStatusResource {
     @Inject
     KubernetesClient kubernetesClient;
 
-    @ConfigProperty(name = "rollout.name", defaultValue = "argo-rollouts-quarkus-demo")
+    @ConfigProperty(name = "rollout.name", defaultValue = "quarkus-demo")
     String rolloutName;
 
-    @ConfigProperty(name = "rollout.namespace", defaultValue = "argo-rollouts-quarkus-demo")
+    @ConfigProperty(name = "rollout.namespace", defaultValue = "quarkus-demo")
     String rolloutNamespace;
 
     private static final ResourceDefinitionContext ROLLOUT_CONTEXT = new ResourceDefinitionContext.Builder()

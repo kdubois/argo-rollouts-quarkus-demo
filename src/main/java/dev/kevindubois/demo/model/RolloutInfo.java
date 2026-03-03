@@ -19,5 +19,3 @@ public record RolloutInfo(
         );
     }
 }
-
-// Made with Bob

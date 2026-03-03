@@ -476,8 +476,10 @@ public class RolloutStatusResource {
                         
                         successfulPods++;
                     }
+                } catch (java.net.SocketTimeoutException e) {
+                    LOG.debug("Pod not reachable (timeout): " + pod.getMetadata().getName());
                 } catch (Exception e) {
-                    LOG.error("Could not fetch metrics from pod: " + e.getMessage(), e);
+                    LOG.debug("Could not fetch metrics from pod " + pod.getMetadata().getName() + ": " + e.getMessage());
                 }
             }
             

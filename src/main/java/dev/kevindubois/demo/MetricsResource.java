@@ -2,6 +2,7 @@ package dev.kevindubois.demo;
 
 import dev.kevindubois.demo.model.DeploymentStatus;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -17,6 +18,9 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Path("/api")
@@ -63,6 +67,8 @@ public class MetricsResource {
         requestTimer = Timer.builder("http_request_duration_seconds")
                 .description("HTTP request duration")
                 .tag("app", "demo")
+                .publishPercentiles(0.5, 0.95, 0.99)
+                .publishPercentileHistogram()
                 .register(registry);
 
         // Success rate gauge
@@ -89,7 +95,6 @@ public class MetricsResource {
     @Path("/status")
     @Produces(MediaType.APPLICATION_JSON)
     public DeploymentStatus getStatus() {
-        // Simulate request processing
         recordRequest();
 
         double successRate = calculateSuccessRate();
@@ -139,16 +144,13 @@ public class MetricsResource {
         requestCounter.increment();
         totalRequests.incrementAndGet();
 
-        // Simulate request processing time and success/failure
         boolean isSuccess;
         long latencyMs;
 
         if ("failure".equals(scenarioMode)) {
-            // Failure scenario: 70% success rate, higher latency
             isSuccess = Math.random() > 0.3;
-            latencyMs = (long) (100 + Math.random() * 400); // 100-500ms
+            latencyMs = (long) (100 + Math.random() * 400);
             
-            // Log errors so AI agent can detect them - make them very obvious
             if (!isSuccess) {
                 LOG.error("CRITICAL ERROR: Request failed with database connection timeout after " + latencyMs + "ms",
                     new RuntimeException("Database connection pool exhausted - unable to acquire connection"));
@@ -156,7 +158,6 @@ public class MetricsResource {
                 LOG.error("PERFORMANCE DEGRADATION: High latency detected: " + latencyMs + "ms - service is struggling");
             }
             
-            // Log periodic summary of failures
             if (totalRequests.get() % 10 == 0) {
                 double currentSuccessRate = calculateSuccessRate();
                 if (currentSuccessRate < 0.8) {
@@ -165,9 +166,8 @@ public class MetricsResource {
                 }
             }
         } else {
-            // Happy scenario: 99% success rate, low latency
             isSuccess = Math.random() > 0.01;
-            latencyMs = (long) (10 + Math.random() * 40); // 10-50ms
+            latencyMs = (long) (10 + Math.random() * 40);
             
             if (!isSuccess) {
                 LOG.warn("Occasional request failure: " + latencyMs + "ms");
@@ -184,5 +184,3 @@ public class MetricsResource {
         }
     }
 }
-
-// Made with Bob

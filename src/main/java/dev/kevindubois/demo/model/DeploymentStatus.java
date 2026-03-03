@@ -71,5 +71,3 @@ public class DeploymentStatus {
         this.status = status;
     }
 }
-
-// Made with Bob

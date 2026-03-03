@@ -12,96 +12,186 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             min-height: 100vh;
-            padding: 20px;
-            color: #333;
+            padding: 24px;
+            color: #f8fafc;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
         }
 
         .container {
             max-width: 1600px;
             margin: 0 auto;
+            position: relative;
+            z-index: 1;
         }
 
         .header {
             text-align: center;
             color: white;
-            margin-bottom: 30px;
+            margin-bottom: 32px;
+            padding: 32px 0;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.2);
         }
 
         .header h1 {
-            font-size: 2.8rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            font-size: 2.5rem;
+            margin-bottom: 12px;
             font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #60a5fa 0%, #c084fc 50%, #10b981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 8s ease-in-out infinite;
+            background-size: 200% 200%;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
         }
 
         .header p {
-            font-size: 1.2rem;
-            opacity: 0.95;
+            font-size: 1.1rem;
+            color: #cbd5e1;
             font-weight: 500;
+            letter-spacing: 0.01em;
         }
 
         .version-badge {
             display: inline-block;
-            background: rgba(255,255,255,0.25);
+            background: rgba(59, 130, 246, 0.1);
             padding: 8px 20px;
-            border-radius: 25px;
-            margin-top: 15px;
+            margin-top: 16px;
             font-weight: 600;
-            backdrop-filter: blur(10px);
+            font-size: 0.9rem;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+            letter-spacing: 0.05em;
         }
 
         .main-grid {
             display: grid;
             grid-template-columns: 2fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
+            gap: 24px;
+            margin-bottom: 24px;
         }
 
         .card {
-            background: white;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            background: rgba(30, 41, 59, 0.95);
+            padding: 32px;
+            border: 2px solid rgba(59, 130, 246, 0.5);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.2);
+            position: relative;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.8), transparent);
         }
 
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 28px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.3);
         }
 
         .card-title {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: 700;
-            color: #1e293b;
+            color: #ffffff;
+            letter-spacing: -0.01em;
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
         }
 
-        /* Progressive Rollout Timeline */
+        .request-visualization {
+            position: relative;
+            height: 120px;
+            margin: 20px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            overflow: hidden;
+        }
+
+        .request-dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 0;
+            animation: floatUp 3s ease-out forwards;
+            opacity: 0;
+        }
+
+        .request-dot.stable {
+            background: #3b82f6;
+            box-shadow: 0 0 10px #3b82f6;
+        }
+
+        .request-dot.canary-success {
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+        }
+
+        .request-dot.canary-error {
+            background: #ef4444;
+            box-shadow: 0 0 10px #ef4444;
+        }
+
+        @keyframes floatUp {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-120px) scale(0.5);
+                opacity: 0;
+            }
+        }
+
         .rollout-timeline {
             position: relative;
-            padding: 30px 0;
+            padding: 32px 0;
         }
 
         .timeline-track {
             position: relative;
-            height: 8px;
-            background: #e5e7eb;
-            border-radius: 4px;
+            height: 4px;
+            background: rgba(59, 130, 246, 0.1);
             margin: 40px 0;
         }
 
         .timeline-progress {
             position: absolute;
             height: 100%;
-            background: linear-gradient(90deg, #10b981, #059669);
-            border-radius: 4px;
-            transition: width 0.8s ease;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
         }
 
         .timeline-stages {
@@ -117,30 +207,28 @@
         }
 
         .stage-marker {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: white;
-            border: 4px solid #e5e7eb;
-            margin: 0 auto 10px;
+            width: 36px;
+            height: 36px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            margin: 0 auto 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #64748b;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             z-index: 2;
         }
 
         .stage.active .stage-marker {
-            border-color: #10b981;
-            background: #10b981;
+            border-color: #3b82f6;
+            background: #3b82f6;
             color: white;
-            transform: scale(1.2);
-            box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.2);
-            animation: pulse-stage 2s infinite;
+            transform: scale(1.15);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
         }
 
         .stage.completed .stage-marker {
@@ -156,46 +244,42 @@
             animation: pulse-warning 2s infinite;
         }
 
-        @keyframes pulse-stage {
-            0%, 100% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.2); }
-            50% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0.1); }
-        }
-
         @keyframes pulse-warning {
-            0%, 100% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.2); }
-            50% { box-shadow: 0 0 0 12px rgba(245, 158, 11, 0.1); }
+            0%, 100% { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2); }
+            50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.1); }
         }
 
         .stage-label {
             font-size: 0.85rem;
             font-weight: 600;
-            color: #64748b;
-            margin-bottom: 5px;
+            color: #e2e8f0;
+            margin-bottom: 4px;
+            letter-spacing: 0.02em;
         }
 
         .stage.active .stage-label,
         .stage.completed .stage-label {
-            color: #10b981;
+            color: #60a5fa;
+            font-weight: 700;
         }
 
         .stage-time {
             font-size: 0.75rem;
-            color: #94a3b8;
+            color: #cbd5e1;
         }
 
         .stage.active .stage-time {
-            color: #059669;
+            color: #60a5fa;
             font-weight: 600;
         }
 
-        /* Traffic Distribution */
         .traffic-visual {
             display: flex;
             height: 80px;
-            border-radius: 12px;
             overflow: hidden;
             margin: 20px 0;
-            box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
         }
 
         .traffic-segment {
@@ -205,29 +289,29 @@
             font-size: 1.5rem;
             font-weight: 700;
             color: white;
-            transition: all 0.8s ease;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
         }
 
         .traffic-stable {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
         }
 
         .traffic-canary {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
+            background: linear-gradient(135deg, #d97706, #f59e0b);
         }
 
         .traffic-canary.healthy {
-            background: linear-gradient(135deg, #10b981, #059669);
+            background: linear-gradient(135deg, #059669, #10b981);
         }
 
         .traffic-canary.degraded {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
+            background: linear-gradient(135deg, #dc2626, #ef4444);
         }
 
         .traffic-legend {
             display: flex;
-            gap: 30px;
+            gap: 32px;
             justify-content: center;
             margin-top: 20px;
         }
@@ -241,40 +325,52 @@
         .legend-color {
             width: 20px;
             height: 20px;
-            border-radius: 4px;
         }
 
         .legend-label {
             font-size: 0.9rem;
             font-weight: 600;
-            color: #64748b;
+            color: #e2e8f0;
+            letter-spacing: 0.01em;
         }
 
-        /* AI Analysis Panel */
         .ai-panel {
-            background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.25) 0%, rgba(91, 33, 182, 0.25) 100%);
             color: white;
-            border-radius: 12px;
-            padding: 25px;
-            margin-top: 20px;
+            padding: 28px;
+            margin-top: 24px;
+            border: 1px solid rgba(124, 58, 237, 0.6);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(124, 58, 237, 0.3), 0 0 0 1px rgba(124, 58, 237, 0.2);
+            position: relative;
+        }
+
+        .ai-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.8), transparent);
         }
 
         .ai-header {
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 16px;
+            margin-bottom: 24px;
         }
 
         .ai-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.2);
+            width: 48px;
+            height: 48px;
+            background: rgba(124, 58, 237, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.5rem;
+            border: 1px solid rgba(124, 58, 237, 0.4);
         }
 
         .ai-icon.analyzing {
@@ -292,97 +388,151 @@
         .ai-status-title {
             font-size: 1.1rem;
             font-weight: 700;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
+            letter-spacing: -0.01em;
         }
 
         .ai-status-subtitle {
             font-size: 0.9rem;
-            opacity: 0.9;
+            color: #cbd5e1;
         }
 
         .ai-metrics {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-top: 20px;
+            gap: 16px;
+            margin-top: 24px;
         }
 
         .ai-metric {
-            background: rgba(255,255,255,0.15);
-            padding: 15px;
-            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 16px;
             text-align: center;
+            border: 1px solid rgba(124, 58, 237, 0.2);
         }
 
         .ai-metric-value {
             font-size: 1.8rem;
             font-weight: 700;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
         }
 
         .ai-metric-label {
             font-size: 0.85rem;
-            opacity: 0.9;
+            color: #cbd5e1;
+            letter-spacing: 0.02em;
         }
 
         .ai-graph-container {
-            background: rgba(255,255,255,0.15);
+            background: rgba(15, 23, 42, 0.5);
             padding: 20px;
-            border-radius: 8px;
-            margin-top: 20px;
+            margin-top: 24px;
+            border: 1px solid rgba(124, 58, 237, 0.2);
         }
 
         .ai-graph-title {
             font-size: 0.9rem;
             font-weight: 600;
-            margin-bottom: 15px;
-            opacity: 0.9;
+            margin-bottom: 16px;
+            color: #cbd5e1;
+            letter-spacing: 0.02em;
         }
 
         #successRateGraph {
             width: 100%;
             height: 120px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.2);
         }
 
         .ai-graph-legend {
-            margin-top: 10px;
+            margin-top: 12px;
             font-size: 0.8rem;
             text-align: right;
-            opacity: 0.8;
+            color: #94a3b8;
         }
 
         .ai-decision {
-            background: rgba(255,255,255,0.15);
+            background: rgba(15, 23, 42, 0.5);
             padding: 20px;
-            border-radius: 8px;
-            margin-top: 20px;
-            border-left: 4px solid rgba(255,255,255,0.5);
+            margin-top: 24px;
+            border-left: 3px solid rgba(124, 58, 237, 0.5);
+            border-top: 1px solid rgba(124, 58, 237, 0.2);
+            border-right: 1px solid rgba(124, 58, 237, 0.2);
+            border-bottom: 1px solid rgba(124, 58, 237, 0.2);
         }
 
         .ai-decision.success {
             border-left-color: #10b981;
-            background: rgba(16, 185, 129, 0.2);
+            background: rgba(16, 185, 129, 0.1);
         }
 
         .ai-decision.failed {
             border-left-color: #ef4444;
-            background: rgba(239, 68, 68, 0.2);
+            background: rgba(239, 68, 68, 0.1);
         }
 
         .ai-decision-title {
             font-weight: 700;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             font-size: 1.1rem;
+            letter-spacing: -0.01em;
         }
 
         .ai-decision-message {
             line-height: 1.6;
-            opacity: 0.95;
+            color: #cbd5e1;
         }
 
-        /* Metrics Grid */
+        .error-log-container {
+            margin-top: 16px;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .error-log-header {
+            padding: 12px 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            background: rgba(239, 68, 68, 0.1);
+            border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .error-log-header:hover {
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        .error-log-toggle {
+            transition: transform 0.3s ease;
+        }
+
+        .error-log-toggle.expanded {
+            transform: rotate(180deg);
+        }
+
+        .error-log-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .error-log-content.expanded {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .error-log-text {
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #fca5a5;
+        }
+
         .metrics-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -390,17 +540,17 @@
         }
 
         .metric-card {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            padding: 25px;
-            border-radius: 12px;
-            border: 2px solid #e2e8f0;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 24px;
+            border: 1px solid rgba(59, 130, 246, 0.2);
         }
 
         .metric-value {
-            font-size: 3rem;
+            font-size: 2.5rem;
             font-weight: 700;
-            color: #1e293b;
-            margin: 10px 0;
+            color: #f1f5f9;
+            margin: 12px 0;
+            letter-spacing: -0.02em;
         }
 
         .metric-value.success {
@@ -416,85 +566,89 @@
         }
 
         .metric-label {
-            font-size: 0.9rem;
-            color: #64748b;
+            font-size: 0.85rem;
+            color: #94a3b8;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.1em;
             font-weight: 600;
         }
 
         .metric-trend {
             font-size: 0.85rem;
-            margin-top: 10px;
-            padding: 5px 10px;
-            border-radius: 6px;
+            margin-top: 12px;
+            padding: 6px 12px;
             display: inline-block;
+            border: 1px solid;
         }
 
         .metric-trend.up {
-            background: #dcfce7;
-            color: #166534;
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.3);
         }
 
         .metric-trend.down {
-            background: #fee2e2;
-            color: #991b1b;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border-color: rgba(239, 68, 68, 0.3);
         }
 
-        /* Scenario Controls */
         .scenario-card {
-            background: white;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            background: rgba(15, 23, 42, 0.8);
+            padding: 32px;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
         }
 
         .current-scenario {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            background: rgba(59, 130, 246, 0.05);
             padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 25px;
-            border-left: 4px solid #3b82f6;
+            margin-bottom: 24px;
+            border-left: 3px solid #3b82f6;
+            border-top: 1px solid rgba(59, 130, 246, 0.2);
+            border-right: 1px solid rgba(59, 130, 246, 0.2);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.2);
         }
 
         .current-scenario-label {
             font-size: 0.85rem;
-            color: #64748b;
+            color: #94a3b8;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.1em;
             font-weight: 600;
             margin-bottom: 8px;
         }
 
         .current-scenario-value {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: 700;
-            color: #1e293b;
+            color: #f1f5f9;
+            letter-spacing: -0.01em;
         }
 
         .scenario-buttons {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 16px;
         }
 
         .scenario-btn {
             padding: 20px;
-            border: 3px solid;
-            border-radius: 12px;
+            border: 2px solid;
             font-size: 1rem;
             font-weight: 700;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             text-align: center;
-            background: white;
+            background: rgba(15, 23, 42, 0.5);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.05em;
         }
 
         .scenario-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
         }
 
         .scenario-btn.success {
@@ -503,8 +657,7 @@
         }
 
         .scenario-btn.success:hover {
-            background: #10b981;
-            color: white;
+            background: rgba(16, 185, 129, 0.1);
         }
 
         .scenario-btn.failure {
@@ -513,55 +666,59 @@
         }
 
         .scenario-btn.failure:hover {
-            background: #ef4444;
-            color: white;
+            background: rgba(239, 68, 68, 0.1);
         }
 
         .scenario-description {
             margin-top: 20px;
-            padding: 15px;
-            background: #fef3c7;
-            border-radius: 8px;
+            padding: 16px;
+            background: rgba(245, 158, 11, 0.05);
             font-size: 0.9rem;
-            color: #92400e;
-            border-left: 4px solid #f59e0b;
+            color: #fbbf24;
+            border-left: 3px solid #f59e0b;
+            border-top: 1px solid rgba(245, 158, 11, 0.2);
+            border-right: 1px solid rgba(245, 158, 11, 0.2);
+            border-bottom: 1px solid rgba(245, 158, 11, 0.2);
         }
 
-        /* Status Badge */
         .status-badge {
             display: inline-flex;
             align-items: center;
             gap: 8px;
             padding: 8px 16px;
-            border-radius: 20px;
             font-size: 0.9rem;
             font-weight: 600;
+            border: 1px solid;
+            letter-spacing: 0.02em;
         }
 
         .status-badge.healthy {
-            background: #dcfce7;
-            color: #166534;
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border-color: rgba(16, 185, 129, 0.3);
         }
 
         .status-badge.progressing {
-            background: #dbeafe;
-            color: #1e40af;
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+            border-color: rgba(59, 130, 246, 0.3);
         }
 
         .status-badge.paused {
-            background: #fef3c7;
-            color: #92400e;
+            background: rgba(245, 158, 11, 0.1);
+            color: #fbbf24;
+            border-color: rgba(245, 158, 11, 0.3);
         }
 
         .status-badge.degraded {
-            background: #fee2e2;
-            color: #991b1b;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border-color: rgba(239, 68, 68, 0.3);
         }
 
         .status-dot {
             width: 8px;
             height: 8px;
-            border-radius: 50%;
             animation: pulse-dot 2s infinite;
         }
 
@@ -586,16 +743,16 @@
             background: #ef4444;
         }
 
-        /* Footer */
         .footer {
             text-align: center;
-            color: white;
-            margin-top: 30px;
-            opacity: 0.9;
-            font-size: 0.95rem;
+            color: #64748b;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(59, 130, 246, 0.2);
+            font-size: 0.9rem;
+            letter-spacing: 0.02em;
         }
 
-        /* Loading State */
         .loading {
             text-align: center;
             padding: 40px;
@@ -605,26 +762,33 @@
         .loading-spinner {
             width: 50px;
             height: 50px;
-            border: 4px solid #e5e7eb;
+            border: 3px solid rgba(59, 130, 246, 0.2);
             border-top-color: #3b82f6;
-            border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 20px;
         }
 
-        /* Error State */
         .error-message {
-            background: #fee2e2;
-            color: #991b1b;
+            background: rgba(239, 68, 68, 0.1);
+            color: #fca5a5;
             padding: 20px;
-            border-radius: 12px;
-            border-left: 4px solid #ef4444;
+            border-left: 3px solid #ef4444;
+            border-top: 1px solid rgba(239, 68, 68, 0.2);
+            border-right: 1px solid rgba(239, 68, 68, 0.2);
+            border-bottom: 1px solid rgba(239, 68, 68, 0.2);
             margin: 20px 0;
         }
 
         .error-title {
             font-weight: 700;
             margin-bottom: 10px;
+            letter-spacing: 0.02em;
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -639,10 +803,29 @@
         <div id="errorContainer"></div>
 
         <div class="main-grid">
-            <!-- Left Column: Rollout Progress -->
             <div>
-                <!-- Progressive Rollout Timeline -->
                 <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Live Request Flow</h2>
+                    </div>
+                    <div class="request-visualization" id="requestVisualization"></div>
+                    <div style="display: flex; gap: 20px; justify-content: center; margin-top: 16px; font-size: 0.9rem;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 12px; height: 12px; background: #3b82f6; box-shadow: 0 0 10px #3b82f6;"></div>
+                            <span style="color: #cbd5e1; font-weight: 500;">Stable</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 12px; height: 12px; background: #10b981; box-shadow: 0 0 10px #10b981;"></div>
+                            <span style="color: #cbd5e1; font-weight: 500;">Canary Success</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 12px; height: 12px; background: #ef4444; box-shadow: 0 0 10px #ef4444;"></div>
+                            <span style="color: #cbd5e1; font-weight: 500;">Canary Error</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 24px;">
                     <div class="card-header">
                         <h2 class="card-title">Rollout Progress</h2>
                         <div id="rolloutStatusBadge"></div>
@@ -681,8 +864,7 @@
                     </div>
                 </div>
 
-                <!-- Traffic Distribution -->
-                <div class="card" style="margin-top: 20px;">
+                <div class="card" style="margin-top: 24px;">
                     <div class="card-header">
                         <h2 class="card-title">Traffic Distribution</h2>
                     </div>
@@ -696,17 +878,16 @@
                     </div>
                     <div class="traffic-legend">
                         <div class="legend-item">
-                            <div class="legend-color" style="background: linear-gradient(135deg, #3b82f6, #2563eb);"></div>
+                            <div class="legend-color" style="background: linear-gradient(135deg, #1e40af, #3b82f6);"></div>
                             <span class="legend-label">Stable Version</span>
                         </div>
                         <div class="legend-item">
-                            <div class="legend-color" id="canaryLegendColor" style="background: linear-gradient(135deg, #10b981, #059669);"></div>
+                            <div class="legend-color" id="canaryLegendColor" style="background: linear-gradient(135deg, #059669, #10b981);"></div>
                             <span class="legend-label">Canary Version</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- AI Analysis Panel -->
                 <div class="ai-panel" id="aiPanel">
                     <div class="ai-header">
                         <div class="ai-icon" id="aiIcon">🤖</div>
@@ -754,9 +935,7 @@
                 </div>
             </div>
 
-            <!-- Right Column: Status & Controls -->
             <div>
-                <!-- Deployment Status -->
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">Deployment Status</h2>
@@ -773,12 +952,11 @@
                     </div>
                 </div>
 
-                <!-- Scenario Information -->
-                <div class="scenario-card" style="margin-top: 20px;">
+                <div class="scenario-card" style="margin-top: 24px;">
                     <div class="card-header">
                         <h2 class="card-title">Deployment Scenarios</h2>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
                         <div class="current-scenario">
                             <div class="current-scenario-label">Stable Pods</div>
                             <div class="current-scenario-value" id="stableScenario">{scenario}</div>
@@ -789,15 +967,15 @@
                         </div>
                     </div>
                     <div style="margin-top: 20px;">
-                        <div style="padding: 20px; background: #f8fafc; border-radius: 12px; border-left: 4px solid #3b82f6;">
-                            <h3 style="margin: 0 0 15px 0; font-size: 1.1rem; color: #1e293b;">About Scenarios</h3>
-                            <div style="line-height: 1.8; color: #475569;">
-                                <p style="margin: 0 0 15px 0;"><strong>Success Scenario:</strong> Simulates a healthy deployment with 99% success rate and low latency. The AI analysis will approve the rollout and traffic will gradually shift to the new version.</p>
-                                <p style="margin: 0;"><strong>Failure Scenario:</strong> Simulates a problematic deployment with 70% success rate and high latency. The AI analysis will detect issues and recommend rollback to prevent impact.</p>
+                        <div style="padding: 20px; background: rgba(59, 130, 246, 0.05); border-left: 3px solid #3b82f6; border-top: 1px solid rgba(59, 130, 246, 0.2); border-right: 1px solid rgba(59, 130, 246, 0.2); border-bottom: 1px solid rgba(59, 130, 246, 0.2);">
+                            <h3 style="margin: 0 0 16px 0; font-size: 1.1rem; color: #f1f5f9; letter-spacing: -0.01em;">About Scenarios</h3>
+                            <div style="line-height: 1.8; color: #cbd5e1;">
+                                <p style="margin: 0 0 16px 0;"><strong style="color: #10b981;">Success Scenario:</strong> Simulates a healthy deployment with 99% success rate and low latency. The AI analysis will approve the rollout and traffic will gradually shift to the new version.</p>
+                                <p style="margin: 0;"><strong style="color: #ef4444;">Failure Scenario:</strong> Simulates a problematic deployment with 70% success rate and high latency. The AI analysis will detect issues and recommend rollback to prevent impact.</p>
                             </div>
                         </div>
-                        <div style="margin-top: 15px; padding: 15px; background: #fef3c7; border-radius: 8px; font-size: 0.9rem; color: #92400e; border-left: 4px solid #f59e0b;">
-                            <strong>To switch scenarios:</strong> Update the <code style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">SCENARIO_MODE</code> environment variable in the rollout configuration and trigger a new deployment.
+                        <div style="margin-top: 16px; padding: 16px; background: rgba(245, 158, 11, 0.05); font-size: 0.9rem; color: #fbbf24; border-left: 3px solid #f59e0b; border-top: 1px solid rgba(245, 158, 11, 0.2); border-right: 1px solid rgba(245, 158, 11, 0.2); border-bottom: 1px solid rgba(245, 158, 11, 0.2);">
+                            <strong>To switch scenarios:</strong> Update the <code style="background: rgba(0,0,0,0.3); padding: 2px 8px; color: #fcd34d;">SCENARIO_MODE</code> environment variable in the rollout configuration and trigger a new deployment.
                         </div>
                     </div>
                 </div>
@@ -825,19 +1003,42 @@
                 updateTrafficDistribution(rolloutData);
                 updateAIAnalysis(rolloutData, metricsData, versionMetrics);
                 updateScenarios(scenariosData);
+                visualizeRealRequests(versionMetrics);
                 clearError();
             })
             .catch(error => {
                 console.error('Error updating dashboard:', error);
-                showError('Failed to fetch dashboard data: ' + error.message);
+                const isConnectionError = error.message.includes('Failed to fetch') ||
+                                         error.message.includes('NetworkError') ||
+                                         error.message.includes('fetch');
+                if (isConnectionError) {
+                    showError('⚠️ Not connected to cluster. Running in demo mode with simulated data.');
+                    showDemoMode();
+                } else {
+                    showError('Failed to fetch dashboard data: ' + error.message);
+                }
             });
+        }
+
+        function showDemoMode() {
+            document.getElementById('rolloutStatusBadge').innerHTML =
+                '<div class="status-badge progressing"><div class="status-dot"></div>Demo Mode</div>';
+            
+            const deploymentStatusValue = document.getElementById('deploymentStatusValue');
+            if (deploymentStatusValue) {
+                deploymentStatusValue.textContent = 'Demo Mode';
+            }
+            
+            const rolloutMessage = document.getElementById('rolloutMessage');
+            if (rolloutMessage) {
+                rolloutMessage.textContent = 'Connect to a Kubernetes cluster to see live data';
+            }
         }
 
         function updateRolloutProgress(rolloutData) {
             const phase = rolloutData.phase || 'Unknown';
             const canaryWeight = rolloutData.canaryWeight || 0;
             
-            // Update status badge
             const badge = document.getElementById('rolloutStatusBadge');
             const statusClass = phase.toLowerCase().replace(/\s+/g, '-');
             badge.innerHTML = '<div class="status-badge ' + statusClass + '">' +
@@ -845,7 +1046,6 @@
                 phase +
                 '</div>';
 
-            // Update deployment status and message
             const deploymentStatusValue = document.getElementById('deploymentStatusValue');
             if (deploymentStatusValue) {
                 deploymentStatusValue.textContent = phase;
@@ -853,7 +1053,6 @@
             
             const rolloutMessage = document.getElementById('rolloutMessage');
             if (rolloutMessage) {
-                // Show appropriate message based on phase
                 let message = rolloutData.message || '';
                 if (!message) {
                     if (phase === 'Healthy' && canaryWeight === 100) {
@@ -871,11 +1070,9 @@
                 rolloutMessage.textContent = message;
             }
 
-            // Update timeline progress
             const progress = document.getElementById('timelineProgress');
             progress.style.width = canaryWeight + '%';
 
-            // Update stage markers
             const stages = document.querySelectorAll('.stage');
             stages.forEach(stage => {
                 const weight = parseInt(stage.dataset.weight);
@@ -907,7 +1104,6 @@
             stablePercentage.textContent = stableWeight + '%';
             canaryPercentage.textContent = canaryWeight + '%';
             
-            // Show/hide percentages based on size
             stablePercentage.style.display = stableWeight < 15 ? 'none' : 'flex';
             canaryPercentage.style.display = canaryWeight < 15 ? 'none' : 'flex';
         }
@@ -922,13 +1118,11 @@
                 const aiDecisionMessage = document.getElementById('aiDecisionMessage');
                 const errorLogContainer = document.getElementById('errorLogContainer');
                 
-                // Verify all required elements exist
                 if (!aiIcon || !aiStatusTitle || !aiStatusSubtitle || !aiDecision || !aiDecisionTitle || !aiDecisionMessage || !errorLogContainer) {
                     console.warn('Some AI panel elements not found, skipping update');
                     return;
                 }
                 
-                // Update metrics in AI panel with separate stable/canary rates
                 const stableSuccessRate = Math.round(versionMetrics.stableSuccessRate);
                 const canarySuccessRate = Math.round(versionMetrics.canarySuccessRate);
                 const totalRequests = versionMetrics.stableRequestCount + versionMetrics.canaryRequestCount;
@@ -941,7 +1135,6 @@
                 if (canaryElement) canaryElement.textContent = canarySuccessRate + '%';
                 if (requestsElement) requestsElement.textContent = totalRequests;
             
-            // Update AI status based on analysis
             const analysis = rolloutData.analysis;
 
             if (analysis && analysis.phase && analysis.phase !== 'Pending' && analysis.phase !== 'NotStarted') {
@@ -965,11 +1158,10 @@
                     aiDecisionMessage.textContent = analysis.message || 'AI analysis completed successfully. All metrics are healthy. The rollout can proceed to the next stage.';
                     errorLogContainer.style.display = 'none';
                     
-                    // Update canary segment color to green
                     const canarySegment = document.getElementById('canarySegment');
                     canarySegment.classList.add('healthy');
                     canarySegment.classList.remove('degraded');
-                    document.getElementById('canaryLegendColor').style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                    document.getElementById('canaryLegendColor').style.background = 'linear-gradient(135deg, #059669, #10b981)';
                 } else if (analysis.phase === 'Failed' || analysis.phase === 'Degraded' || analysis.successful === false) {
                     aiIcon.textContent = '❌';
                     aiStatusTitle.textContent = 'Analysis Failed';
@@ -978,7 +1170,6 @@
                     aiDecisionTitle.textContent = '✗ Rollback Recommended';
                     aiDecisionMessage.textContent = analysis.message || 'AI analysis detected issues with the canary deployment. Metrics are outside acceptable thresholds. Rollback is recommended.';
                     
-                    // Show error log if available
                     if (analysis.errorLog) {
                         errorLogContainer.style.display = 'block';
                         document.getElementById('errorLogText').textContent = analysis.errorLog;
@@ -986,11 +1177,10 @@
                         errorLogContainer.style.display = 'none';
                     }
                     
-                    // Update canary segment color to red
                     const canarySegment = document.getElementById('canarySegment');
                     canarySegment.classList.add('degraded');
                     canarySegment.classList.remove('healthy');
-                    document.getElementById('canaryLegendColor').style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+                    document.getElementById('canaryLegendColor').style.background = 'linear-gradient(135deg, #dc2626, #ef4444)';
                 } else if (analysis.phase === 'Error') {
                     aiIcon.textContent = '⚠️';
                     aiStatusTitle.textContent = 'Analysis Error';
@@ -999,7 +1189,6 @@
                     aiDecisionTitle.textContent = 'Error';
                     aiDecisionMessage.textContent = analysis.message || 'An error occurred during analysis.';
                     
-                    // Show error log if available
                     if (analysis.errorLog) {
                         errorLogContainer.style.display = 'block';
                         document.getElementById('errorLogText').textContent = analysis.errorLog;
@@ -1015,7 +1204,6 @@
                     errorLogContainer.style.display = 'none';
                 }
             } else {
-                // No active analysis or analysis is pending
                 aiIcon.classList.remove('analyzing');
                 aiIcon.textContent = '🤖';
                 aiStatusTitle.textContent = 'AI Monitoring';
@@ -1026,7 +1214,6 @@
                 errorLogContainer.style.display = 'none';
             }
             
-                // Update success rate graph with canary rate (or stable if canary not available)
                 const graphSuccessRate = canarySuccessRate > 0 ? canarySuccessRate : stableSuccessRate;
                 updateSuccessRateGraph(graphSuccessRate);
             } catch (error) {
@@ -1047,18 +1234,15 @@
             }
         }
         
-        // Success rate history for graphing
         const successRateHistory = [];
         const maxHistoryPoints = 30;
         
         function updateSuccessRateGraph(currentSuccessRate) {
-            // Add current rate to history
             successRateHistory.push(currentSuccessRate);
             if (successRateHistory.length > maxHistoryPoints) {
                 successRateHistory.shift();
             }
             
-            // Draw the graph
             const canvas = document.getElementById('successRateGraph');
             if (!canvas) return;
             
@@ -1066,12 +1250,10 @@
             const width = canvas.width;
             const height = canvas.height;
             
-            // Clear canvas
             ctx.clearRect(0, 0, width, height);
             
             if (successRateHistory.length < 2) return;
             
-            // Draw grid lines
             ctx.strokeStyle = '#e5e7eb';
             ctx.lineWidth = 1;
             for (let i = 0; i <= 4; i++) {
@@ -1082,13 +1264,11 @@
                 ctx.stroke();
             }
             
-            // Draw success rate line
             ctx.strokeStyle = currentSuccessRate >= 95 ? '#10b981' : currentSuccessRate >= 90 ? '#f59e0b' : '#ef4444';
             ctx.lineWidth = 2;
             ctx.beginPath();
             
             const pointSpacing = width / (maxHistoryPoints - 1);
-            const startIndex = Math.max(0, successRateHistory.length - maxHistoryPoints);
             
             successRateHistory.forEach((rate, index) => {
                 const x = index * pointSpacing;
@@ -1103,7 +1283,6 @@
             
             ctx.stroke();
             
-            // Draw threshold line at 95%
             ctx.strokeStyle = '#94a3b8';
             ctx.lineWidth = 1;
             ctx.setLineDash([5, 5]);
@@ -1120,6 +1299,57 @@
             document.getElementById('canaryScenario').textContent = scenariosData.canary || 'none';
         }
 
+        let previousStableRequests = 0;
+        let previousCanaryRequests = 0;
+        let previousCanaryErrors = 0;
+
+        function animateRequest(type) {
+            const container = document.getElementById('requestVisualization');
+            if (!container) return;
+            
+            const dot = document.createElement('div');
+            dot.className = 'request-dot ' + type;
+            dot.style.left = Math.random() * (container.offsetWidth - 12) + 'px';
+            dot.style.bottom = '0px';
+            
+            container.appendChild(dot);
+            
+            setTimeout(() => {
+                if (dot.parentNode) {
+                    dot.parentNode.removeChild(dot);
+                }
+            }, 3000);
+        }
+
+        function visualizeRealRequests(versionMetrics) {
+            const stableRequests = versionMetrics.stableRequestCount || 0;
+            const canaryRequests = versionMetrics.canaryRequestCount || 0;
+            const canarySuccessRate = versionMetrics.canarySuccessRate || 100;
+            
+            const stableDelta = stableRequests - previousStableRequests;
+            const canaryDelta = canaryRequests - previousCanaryRequests;
+            
+            const canarySuccessCount = Math.round((canarySuccessRate / 100) * canaryRequests);
+            const canaryErrorCount = canaryRequests - canarySuccessCount;
+            const canaryErrorDelta = canaryErrorCount - previousCanaryErrors;
+            const canarySuccessDelta = canaryDelta - canaryErrorDelta;
+            
+            for (let i = 0; i < Math.min(stableDelta, 10); i++) {
+                setTimeout(() => animateRequest('stable'), i * 100);
+            }
+            
+            for (let i = 0; i < Math.min(canarySuccessDelta, 10); i++) {
+                setTimeout(() => animateRequest('canary-success'), i * 100 + 50);
+            }
+            
+            for (let i = 0; i < Math.min(canaryErrorDelta, 10); i++) {
+                setTimeout(() => animateRequest('canary-error'), i * 100 + 75);
+            }
+            
+            previousStableRequests = stableRequests;
+            previousCanaryRequests = canaryRequests;
+            previousCanaryErrors = canaryErrorCount;
+        }
 
         function showError(message) {
             const errorContainer = document.getElementById('errorContainer');

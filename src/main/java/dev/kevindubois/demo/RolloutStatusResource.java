@@ -2,6 +2,7 @@ package dev.kevindubois.demo;
 
 import dev.kevindubois.demo.model.AnalysisInfo;
 import dev.kevindubois.demo.model.RolloutInfo;
+import dev.kevindubois.demo.model.VersionMetrics;
 import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -15,6 +16,10 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.List;
 import java.util.Map;
 
@@ -230,14 +235,78 @@ public class RolloutStatusResource {
                 successful = false;
             }
             
+            // Extract error logs from failed metrics
+            String errorLog = extractErrorLog(analysisStatus);
+            
             Map<String, Object> metadata = (Map<String, Object>) latestAnalysisRun.getAdditionalProperties().get("metadata");
             String analysisRunName = metadata != null ? (String) metadata.get("name") : "unknown";
             LOG.debugf("Found AnalysisRun %s: phase=%s, message=%s, successful=%s", analysisRunName, phase, message, successful);
-            return new AnalysisInfo(phase, message, successful);
+            return new AnalysisInfo(phase, message, successful, errorLog);
 
         } catch (Exception e) {
             LOG.error("Error fetching analysis info", e);
-            return new AnalysisInfo("Error", "Error fetching analysis: " + e.getMessage(), null);
+            return new AnalysisInfo("Error", "Error fetching analysis: " + e.getMessage(), null, null);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractErrorLog(Map<String, Object> analysisStatus) {
+        try {
+            Object metricResultsObj = analysisStatus.get("metricResults");
+            if (!(metricResultsObj instanceof List)) {
+                return null;
+            }
+            
+            List<Map<String, Object>> metricResults = (List<Map<String, Object>>) metricResultsObj;
+            StringBuilder errorLog = new StringBuilder();
+            
+            for (Map<String, Object> metricResult : metricResults) {
+                String phase = metricResult.get("phase") != null ? metricResult.get("phase").toString() : "";
+                
+                if ("Failed".equals(phase) || "Error".equals(phase)) {
+                    String metricName = metricResult.get("name") != null ? metricResult.get("name").toString() : "unknown";
+                    String metricMessage = metricResult.get("message") != null ? metricResult.get("message").toString() : "";
+                    
+                    if (errorLog.length() > 0) {
+                        errorLog.append("\n\n");
+                    }
+                    
+                    errorLog.append("Metric: ").append(metricName).append("\n");
+                    errorLog.append("Status: ").append(phase).append("\n");
+                    
+                    if (!metricMessage.isEmpty()) {
+                        errorLog.append("Message: ").append(metricMessage).append("\n");
+                    }
+                    
+                    // Extract measurements if available
+                    Object measurementsObj = metricResult.get("measurements");
+                    if (measurementsObj instanceof List) {
+                        List<Map<String, Object>> measurements = (List<Map<String, Object>>) measurementsObj;
+                        if (!measurements.isEmpty()) {
+                            errorLog.append("Measurements:\n");
+                            for (Map<String, Object> measurement : measurements) {
+                                String value = measurement.get("value") != null ? measurement.get("value").toString() : "N/A";
+                                String measurementPhase = measurement.get("phase") != null ? measurement.get("phase").toString() : "";
+                                String measurementMessage = measurement.get("message") != null ? measurement.get("message").toString() : "";
+                                
+                                errorLog.append("  - Value: ").append(value);
+                                if (!measurementPhase.isEmpty()) {
+                                    errorLog.append(", Phase: ").append(measurementPhase);
+                                }
+                                if (!measurementMessage.isEmpty()) {
+                                    errorLog.append(", Message: ").append(measurementMessage);
+                                }
+                                errorLog.append("\n");
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return errorLog.length() > 0 ? errorLog.toString() : null;
+        } catch (Exception e) {
+            LOG.debug("Could not extract error log from analysis status", e);
+            return null;
         }
     }
 
@@ -307,6 +376,127 @@ public class RolloutStatusResource {
             this.canary = canary;
         }
     }
-}
 
-// Made with Bob
+    @GET
+    @Path("/metrics")
+    @Produces(MediaType.APPLICATION_JSON)
+    public VersionMetrics getVersionMetrics() {
+        LOG.info("=== getVersionMetrics called ===");
+        try {
+            LOG.info("Fetching stable metrics...");
+            PodMetrics stableMetrics = fetchMetricsFromPods("stable");
+            LOG.info("Stable metrics: successRate=" + stableMetrics.successRate + ", requests=" + stableMetrics.requestCount);
+            
+            LOG.info("Fetching canary metrics...");
+            PodMetrics canaryMetrics = fetchMetricsFromPods("canary");
+            LOG.info("Canary metrics: successRate=" + canaryMetrics.successRate + ", requests=" + canaryMetrics.requestCount);
+            
+            return new VersionMetrics(
+                stableMetrics.successRate,
+                canaryMetrics.successRate,
+                stableMetrics.requestCount,
+                canaryMetrics.requestCount
+            );
+        } catch (Exception e) {
+            LOG.error("Error fetching version metrics", e);
+            return VersionMetrics.unavailable();
+        }
+    }
+
+    private PodMetrics fetchMetricsFromPods(String roleLabel) {
+        LOG.info("fetchMetricsFromPods called for role: " + roleLabel);
+        try {
+            List<Pod> pods = kubernetesClient.pods()
+                .inNamespace(rolloutNamespace)
+                .withLabel("app", rolloutName)
+                .withLabel("role", roleLabel)
+                .list()
+                .getItems();
+            
+            LOG.info("Found " + pods.size() + " pods with role: " + roleLabel);
+            
+            if (pods.isEmpty()) {
+                LOG.warn("No pods found with role: " + roleLabel);
+                return new PodMetrics(0.0, 0);
+            }
+            
+            double totalSuccessRate = 0.0;
+            long totalRequests = 0;
+            int successfulPods = 0;
+            
+            for (Pod pod : pods) {
+                try {
+                    String podIp = pod.getStatus().getPodIP();
+                    if (podIp == null) {
+                        LOG.warn("Pod has no IP: " + pod.getMetadata().getName());
+                        continue;
+                    }
+                    
+                    String podUrl = "http://" + podIp + ":8080/api/status";
+                    LOG.info("Fetching metrics from pod " + pod.getMetadata().getName() + " at " + podUrl);
+                    URL url = new URL(podUrl);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(1000);
+                    conn.setReadTimeout(1000);
+                    
+                    int responseCode = conn.getResponseCode();
+                    LOG.info("Response code from pod " + pod.getMetadata().getName() + ": " + responseCode);
+                    if (responseCode == 200) {
+                        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                        StringBuilder response = new StringBuilder();
+                        String line;
+                        while ((line = in.readLine()) != null) {
+                            response.append(line);
+                        }
+                        in.close();
+                        
+                        String jsonResponse = response.toString();
+                        LOG.info("Got response from pod: " + jsonResponse);
+                        
+                        int successRateIndex = jsonResponse.indexOf("\"successRate\":");
+                        if (successRateIndex != -1) {
+                            String afterSuccessRate = jsonResponse.substring(successRateIndex + 14);
+                            int commaIndex = afterSuccessRate.indexOf(",");
+                            int braceIndex = afterSuccessRate.indexOf("}");
+                            int endIndex = commaIndex != -1 ? Math.min(commaIndex, braceIndex) : braceIndex;
+                            String successRateStr = afterSuccessRate.substring(0, endIndex).trim();
+                            totalSuccessRate += Double.parseDouble(successRateStr);
+                        }
+                        
+                        int requestCountIndex = jsonResponse.indexOf("\"requestCount\":");
+                        if (requestCountIndex != -1) {
+                            String afterRequestCount = jsonResponse.substring(requestCountIndex + 15);
+                            int commaIndex = afterRequestCount.indexOf(",");
+                            int braceIndex = afterRequestCount.indexOf("}");
+                            int endIndex = commaIndex != -1 ? Math.min(commaIndex, braceIndex) : braceIndex;
+                            String requestCountStr = afterRequestCount.substring(0, endIndex).trim();
+                            totalRequests += Long.parseLong(requestCountStr);
+                        }
+                        
+                        successfulPods++;
+                    }
+                } catch (Exception e) {
+                    LOG.error("Could not fetch metrics from pod: " + e.getMessage(), e);
+                }
+            }
+            
+            double avgSuccessRate = successfulPods > 0 ? totalSuccessRate / successfulPods : 0.0;
+            return new PodMetrics(avgSuccessRate, totalRequests);
+            
+        } catch (Exception e) {
+            LOG.debug("Error fetching metrics from pods with role " + roleLabel + ": " + e.getMessage());
+            return new PodMetrics(0.0, 0);
+        }
+    }
+    
+    private static class PodMetrics {
+        final double successRate;
+        final long requestCount;
+        
+        PodMetrics(double successRate, long requestCount) {
+            this.successRate = successRate;
+            this.requestCount = requestCount;
+        }
+    }
+}

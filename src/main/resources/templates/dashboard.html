@@ -717,16 +717,16 @@
                     </div>
                     <div class="ai-metrics" id="aiMetrics">
                         <div class="ai-metric">
-                            <div class="ai-metric-value" id="aiSuccessRate">--</div>
-                            <div class="ai-metric-label">Success Rate</div>
+                            <div class="ai-metric-value" id="stableSuccessRate">--</div>
+                            <div class="ai-metric-label">Stable Success Rate</div>
                         </div>
                         <div class="ai-metric">
-                            <div class="ai-metric-value" id="aiErrorRate">--</div>
-                            <div class="ai-metric-label">Error Rate</div>
+                            <div class="ai-metric-value" id="canarySuccessRate">--</div>
+                            <div class="ai-metric-label">Canary Success Rate</div>
                         </div>
                         <div class="ai-metric">
                             <div class="ai-metric-value" id="aiRequests">--</div>
-                            <div class="ai-metric-label">Requests</div>
+                            <div class="ai-metric-label">Total Requests</div>
                         </div>
                     </div>
                     <div class="ai-graph-container">
@@ -740,6 +740,15 @@
                         <div class="ai-decision-title" id="aiDecisionTitle">Monitoring</div>
                         <div class="ai-decision-message" id="aiDecisionMessage">
                             The AI agent continuously analyzes deployment metrics to determine rollout health.
+                        </div>
+                        <div class="error-log-container" id="errorLogContainer" style="display: none;">
+                            <div class="error-log-header" onclick="toggleErrorLog()">
+                                <span>📋 Error Details</span>
+                                <span class="error-log-toggle" id="errorLogToggle">▼</span>
+                            </div>
+                            <div class="error-log-content" id="errorLogContent">
+                                <div class="error-log-text" id="errorLogText"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -808,12 +817,13 @@
             Promise.all([
                 fetch('/api/status').then(r => r.json()),
                 fetch('/api/rollout/status').then(r => r.json()),
-                fetch('/api/rollout/scenarios').then(r => r.json())
+                fetch('/api/rollout/scenarios').then(r => r.json()),
+                fetch('/api/rollout/metrics').then(r => r.json())
             ])
-            .then(([metricsData, rolloutData, scenariosData]) => {
+            .then(([metricsData, rolloutData, scenariosData, versionMetrics]) => {
                 updateRolloutProgress(rolloutData);
                 updateTrafficDistribution(rolloutData);
-                updateAIAnalysis(rolloutData, metricsData);
+                updateAIAnalysis(rolloutData, metricsData, versionMetrics);
                 updateScenarios(scenariosData);
                 clearError();
             })
@@ -902,20 +912,34 @@
             canaryPercentage.style.display = canaryWeight < 15 ? 'none' : 'flex';
         }
 
-        function updateAIAnalysis(rolloutData, metricsData) {
-            const aiIcon = document.getElementById('aiIcon');
-            const aiStatusTitle = document.getElementById('aiStatusTitle');
-            const aiStatusSubtitle = document.getElementById('aiStatusSubtitle');
-            const aiDecision = document.getElementById('aiDecision');
-            const aiDecisionTitle = document.getElementById('aiDecisionTitle');
-            const aiDecisionMessage = document.getElementById('aiDecisionMessage');
-            
-            // Update metrics in AI panel
-            const successRate = Math.round(metricsData.successRate);
-            const errorRate = Math.round(100 - metricsData.successRate);
-            document.getElementById('aiSuccessRate').textContent = successRate + '%';
-            document.getElementById('aiErrorRate').textContent = errorRate + '%';
-            document.getElementById('aiRequests').textContent = metricsData.requestCount;
+        function updateAIAnalysis(rolloutData, metricsData, versionMetrics) {
+            try {
+                const aiIcon = document.getElementById('aiIcon');
+                const aiStatusTitle = document.getElementById('aiStatusTitle');
+                const aiStatusSubtitle = document.getElementById('aiStatusSubtitle');
+                const aiDecision = document.getElementById('aiDecision');
+                const aiDecisionTitle = document.getElementById('aiDecisionTitle');
+                const aiDecisionMessage = document.getElementById('aiDecisionMessage');
+                const errorLogContainer = document.getElementById('errorLogContainer');
+                
+                // Verify all required elements exist
+                if (!aiIcon || !aiStatusTitle || !aiStatusSubtitle || !aiDecision || !aiDecisionTitle || !aiDecisionMessage || !errorLogContainer) {
+                    console.warn('Some AI panel elements not found, skipping update');
+                    return;
+                }
+                
+                // Update metrics in AI panel with separate stable/canary rates
+                const stableSuccessRate = Math.round(versionMetrics.stableSuccessRate);
+                const canarySuccessRate = Math.round(versionMetrics.canarySuccessRate);
+                const totalRequests = versionMetrics.stableRequestCount + versionMetrics.canaryRequestCount;
+                
+                const stableElement = document.getElementById('stableSuccessRate');
+                const canaryElement = document.getElementById('canarySuccessRate');
+                const requestsElement = document.getElementById('aiRequests');
+                
+                if (stableElement) stableElement.textContent = stableSuccessRate + '%';
+                if (canaryElement) canaryElement.textContent = canarySuccessRate + '%';
+                if (requestsElement) requestsElement.textContent = totalRequests;
             
             // Update AI status based on analysis
             const analysis = rolloutData.analysis;
@@ -924,13 +948,14 @@
                 aiIcon.classList.remove('analyzing');
                 aiDecision.classList.remove('success', 'failed');
 
-                if (analysis.phase === 'Running') {
+                if (analysis.phase === 'Running' || analysis.phase === 'Progressing' || analysis.phase === 'InProgress') {
                     aiIcon.classList.add('analyzing');
                     aiIcon.textContent = '🔄';
                     aiStatusTitle.textContent = 'Analysis Running';
                     aiStatusSubtitle.textContent = 'AI is evaluating deployment metrics';
                     aiDecisionTitle.textContent = 'Analyzing...';
                     aiDecisionMessage.textContent = analysis.message || 'The AI agent is currently analyzing canary metrics to determine if the rollout should continue.';
+                    errorLogContainer.style.display = 'none';
                 } else if (analysis.phase === 'Successful' || analysis.successful === true) {
                     aiIcon.textContent = '✅';
                     aiStatusTitle.textContent = 'Analysis Successful';
@@ -938,6 +963,7 @@
                     aiDecision.classList.add('success');
                     aiDecisionTitle.textContent = '✓ Rollout Approved';
                     aiDecisionMessage.textContent = analysis.message || 'AI analysis completed successfully. All metrics are healthy. The rollout can proceed to the next stage.';
+                    errorLogContainer.style.display = 'none';
                     
                     // Update canary segment color to green
                     const canarySegment = document.getElementById('canarySegment');
@@ -952,6 +978,14 @@
                     aiDecisionTitle.textContent = '✗ Rollback Recommended';
                     aiDecisionMessage.textContent = analysis.message || 'AI analysis detected issues with the canary deployment. Metrics are outside acceptable thresholds. Rollback is recommended.';
                     
+                    // Show error log if available
+                    if (analysis.errorLog) {
+                        errorLogContainer.style.display = 'block';
+                        document.getElementById('errorLogText').textContent = analysis.errorLog;
+                    } else {
+                        errorLogContainer.style.display = 'none';
+                    }
+                    
                     // Update canary segment color to red
                     const canarySegment = document.getElementById('canarySegment');
                     canarySegment.classList.add('degraded');
@@ -964,12 +998,21 @@
                     aiDecision.classList.add('failed');
                     aiDecisionTitle.textContent = 'Error';
                     aiDecisionMessage.textContent = analysis.message || 'An error occurred during analysis.';
+                    
+                    // Show error log if available
+                    if (analysis.errorLog) {
+                        errorLogContainer.style.display = 'block';
+                        document.getElementById('errorLogText').textContent = analysis.errorLog;
+                    } else {
+                        errorLogContainer.style.display = 'none';
+                    }
                 } else {
                     aiIcon.textContent = '📊';
                     aiStatusTitle.textContent = 'Analysis: ' + analysis.phase;
                     aiStatusSubtitle.textContent = 'Current status';
                     aiDecisionTitle.textContent = analysis.phase;
                     aiDecisionMessage.textContent = analysis.message || 'Analysis status: ' + analysis.phase;
+                    errorLogContainer.style.display = 'none';
                 }
             } else {
                 // No active analysis or analysis is pending
@@ -980,10 +1023,28 @@
                 aiDecision.classList.remove('success', 'failed');
                 aiDecisionTitle.textContent = 'Waiting...';
                 aiDecisionMessage.textContent = analysis && analysis.message ? analysis.message : 'The AI agent will analyze metrics once the rollout progresses and sufficient data is collected.';
+                errorLogContainer.style.display = 'none';
             }
             
-            // Update success rate graph
-            updateSuccessRateGraph(metricsData.successRate);
+                // Update success rate graph with canary rate (or stable if canary not available)
+                const graphSuccessRate = canarySuccessRate > 0 ? canarySuccessRate : stableSuccessRate;
+                updateSuccessRateGraph(graphSuccessRate);
+            } catch (error) {
+                console.error('Error in updateAIAnalysis:', error);
+            }
+        }
+
+        function toggleErrorLog() {
+            const content = document.getElementById('errorLogContent');
+            const toggle = document.getElementById('errorLogToggle');
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                toggle.classList.remove('expanded');
+            } else {
+                content.classList.add('expanded');
+                toggle.classList.add('expanded');
+            }
         }
         
         // Success rate history for graphing

@@ -1,5 +1,7 @@
 # Argo Rollouts AI Plugin - Demo Application
 
+[![Build and Push](https://github.com/kdubois/argo-rollouts-quarkus-demo/actions/workflows/build.yml/badge.svg)](https://github.com/kdubois/argo-rollouts-quarkus-demo/actions/workflows/build.yml)
+
 A demonstration application showcasing AI-powered progressive delivery with Argo Rollouts. This Quarkus-based application integrates with the Argo Rollouts AI Plugin to enable autonomous canary deployment analysis and automated remediation.
 
 ## Quick Links
@@ -91,7 +93,20 @@ The application supports multiple deployment scenarios for demonstration purpose
 - **SmallRye Health**: Health check endpoints
 - **Micrometer**: Metrics collection and exposure
 - **Argo Rollouts**: Progressive delivery controller
-- **Istio**: Service mesh for traffic management
+
+## CI/CD
+
+The project uses GitHub Actions for automated builds and deployments:
+
+- **Automated Builds**: Every push to `main` triggers a build and pushes container images to GitHub Container Registry (GHCR)
+- **Pull Request Validation**: PRs are built and tested automatically
+- **Container Images**: Available at `ghcr.io/kdubois/argo-rollouts-quarkus-demo`
+- **Dependency Management**: Dependabot automatically creates PRs for dependency updates
+
+Container images are tagged with:
+- `latest` for the main branch
+- Version tags for releases (e.g., `v1.0.0`)
+- SHA-based tags for all builds
 
 ## Quick Start
 

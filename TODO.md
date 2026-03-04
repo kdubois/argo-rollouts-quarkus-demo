@@ -1,21 +1,10 @@
 # TODO
 
-## Dashboard Issues
 
-The dashboard currently has a bug where the status indicator does not update when an analysis starts. The UI should reflect the transition from waiting to active analysis state.
+* The current rollout message isn't very useful. add an AI service to the argo-rollouts-quarkus-demo that summarizes the kubernetes agent analysis and adds it to the screen. Make this asynchronous though.
 
-When an analysis fails, the dashboard should display a summary of the relevant error logs from the Kubernetes agent. This will help users quickly understand what went wrong without having to check the agent logs separately.
+* The analysis sometimes takes too long, resulting in the rollout going to > 60% before being rolled back.  There is a lot of back-and-forth between the agents and the LLM. can we reduce this?
 
-## Metrics and Visualization
+* Remove the old KubernetesAgent
 
-The success rate gauge is not accurately representing the deployment state. Consider splitting this into two separate gauges: one showing the success rate of the stable version and another for the canary version. This would provide clearer visibility into how each version is performing.
-
-The analysis process should incorporate actual metrics data in addition to log analysis. Currently it relies too heavily on logs, but metrics would provide more quantitative insights into deployment health.
-
-## User Experience
-
-The dashboard needs a visual refresh to look more modern and polished. The current design feels dated and could benefit from improved styling and layout.
-
-~~The rollout name "argo-rollouts-quarkus-demo" is verbose and cumbersome to reference. Rename it to simply "quarkus-demo" for easier command-line usage and better readability in the UI.~~ ✅ COMPLETED
-
-# Create github actions to build/push images
+* it always says "waiting for analysis to start" on the dashboard, even when an analysis is underway. 

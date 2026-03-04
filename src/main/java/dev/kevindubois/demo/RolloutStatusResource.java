@@ -8,13 +8,13 @@ import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.base.ResourceDefinitionContext;
+import io.quarkus.logging.Log;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -25,8 +25,6 @@ import java.util.Map;
 
 @Path("/api/rollout")
 public class RolloutStatusResource {
-
-    private static final Logger LOG = Logger.getLogger(RolloutStatusResource.class);
 
     @Inject
     KubernetesClient kubernetesClient;
@@ -65,17 +63,17 @@ public class RolloutStatusResource {
                     .get();
 
             if (rollout == null) {
-                LOG.warn("Rollout not found: " + rolloutName + " in namespace " + rolloutNamespace);
+                Log.warn("Rollout not found: " + rolloutName + " in namespace " + rolloutNamespace);
                 return RolloutInfo.notFound();
             }
 
             RolloutInfo info = extractRolloutInfo(rollout);
-            LOG.debugf("Rollout status: phase=%s, canaryWeight=%d, stableWeight=%d",
+            Log.debugf("Rollout status: phase=%s, canaryWeight=%d, stableWeight=%d",
                     info.phase(), info.canaryWeight(), info.stableWeight());
             return info;
 
         } catch (Exception e) {
-            LOG.error("Error fetching rollout status", e);
+            Log.error("Error fetching rollout status", e);
             return new RolloutInfo(
                     rolloutName,
                     "Error",
@@ -89,7 +87,6 @@ public class RolloutStatusResource {
 
     private RolloutInfo extractRolloutInfo(GenericKubernetesResource rollout) {
         Map<String, Object> status = getStatus(rollout);
-        Map<String, Object> spec = getSpec(rollout);
 
         String phase = getPhase(status);
         String message = getMessage(status);
@@ -112,12 +109,6 @@ public class RolloutStatusResource {
     private Map<String, Object> getStatus(GenericKubernetesResource resource) {
         Object status = resource.getAdditionalProperties().get("status");
         return status instanceof Map ? (Map<String, Object>) status : Map.of();
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> getSpec(GenericKubernetesResource resource) {
-        Object spec = resource.getAdditionalProperties().get("spec");
-        return spec instanceof Map ? (Map<String, Object>) spec : Map.of();
     }
 
     private String getPhase(Map<String, Object> status) {
@@ -183,7 +174,7 @@ public class RolloutStatusResource {
                 }
             }
         } catch (Exception e) {
-            LOG.debug("Could not extract canary weight", e);
+            Log.debug("Could not extract canary weight", e);
         }
         return 0;
     }
@@ -200,7 +191,7 @@ public class RolloutStatusResource {
                     .getItems();
             
             if (analysisRuns.isEmpty()) {
-                LOG.debugf("No AnalysisRuns found for rollout %s", rolloutName);
+                Log.debugf("No AnalysisRuns found for rollout %s", rolloutName);
                 return AnalysisInfo.notStarted();
             }
             
@@ -235,16 +226,16 @@ public class RolloutStatusResource {
                 successful = false;
             }
             
-            // Extract error logs from failed metrics
+            // Extract error Logs from failed metrics
             String errorLog = extractErrorLog(analysisStatus);
             
             Map<String, Object> metadata = (Map<String, Object>) latestAnalysisRun.getAdditionalProperties().get("metadata");
             String analysisRunName = metadata != null ? (String) metadata.get("name") : "unknown";
-            LOG.debugf("Found AnalysisRun %s: phase=%s, message=%s, successful=%s", analysisRunName, phase, message, successful);
+            Log.debugf("Found AnalysisRun %s: phase=%s, message=%s, successful=%s", analysisRunName, phase, message, successful);
             return new AnalysisInfo(phase, message, successful, errorLog);
 
         } catch (Exception e) {
-            LOG.error("Error fetching analysis info", e);
+            Log.error("Error fetching analysis info", e);
             return new AnalysisInfo("Error", "Error fetching analysis: " + e.getMessage(), null, null);
         }
     }
@@ -305,7 +296,7 @@ public class RolloutStatusResource {
             
             return errorLog.length() > 0 ? errorLog.toString() : null;
         } catch (Exception e) {
-            LOG.debug("Could not extract error log from analysis status", e);
+            Log.debug("Could not extract error Log from analysis status", e);
             return null;
         }
     }
@@ -320,7 +311,7 @@ public class RolloutStatusResource {
             
             return new DeploymentScenarios(stableScenario, canaryScenario);
         } catch (Exception e) {
-            LOG.error("Error fetching deployment scenarios", e);
+            Log.error("Error fetching deployment scenarios", e);
             return new DeploymentScenarios("unknown", "unknown");
         }
     }
@@ -335,13 +326,13 @@ public class RolloutStatusResource {
                 .getItems();
             
             if (pods.isEmpty()) {
-                LOG.debug("No pods found with role: " + roleLabel);
+                Log.debug("No pods found with role: " + roleLabel);
                 return "none";
             }
             
             // Get the first pod and extract SCENARIO_MODE env var
             Pod pod = pods.get(0);
-            LOG.debug("Found pod: " + pod.getMetadata().getName() + " with role: " + roleLabel);
+            Log.debug("Found pod: " + pod.getMetadata().getName() + " with role: " + roleLabel);
             
             if (pod.getSpec() != null &&
                 pod.getSpec().getContainers() != null &&
@@ -352,17 +343,17 @@ public class RolloutStatusResource {
                     for (EnvVar envVar : envVars) {
                         if ("SCENARIO_MODE".equals(envVar.getName())) {
                             String value = envVar.getValue() != null ? envVar.getValue() : "unknown";
-                            LOG.debug("Found SCENARIO_MODE=" + value + " for role: " + roleLabel);
+                            Log.debug("Found SCENARIO_MODE=" + value + " for role: " + roleLabel);
                             return value;
                         }
                     }
                 }
             }
             
-            LOG.debug("SCENARIO_MODE not found in pod env vars for role: " + roleLabel);
+            Log.debug("SCENARIO_MODE not found in pod env vars for role: " + roleLabel);
             return "unknown";
         } catch (Exception e) {
-            LOG.error("Could not fetch scenario from pods with role " + roleLabel + ": " + e.getMessage(), e);
+            Log.error("Could not fetch scenario from pods with role " + roleLabel + ": " + e.getMessage(), e);
             return "unknown";
         }
     }
@@ -381,15 +372,15 @@ public class RolloutStatusResource {
     @Path("/metrics")
     @Produces(MediaType.APPLICATION_JSON)
     public VersionMetrics getVersionMetrics() {
-        LOG.info("=== getVersionMetrics called ===");
+        Log.debug("=== getVersionMetrics called ===");
         try {
-            LOG.info("Fetching stable metrics...");
+            Log.debug("Fetching stable metrics...");
             PodMetrics stableMetrics = fetchMetricsFromPods("stable");
-            LOG.info("Stable metrics: successRate=" + stableMetrics.successRate + ", requests=" + stableMetrics.requestCount);
+            Log.debug("Stable metrics: successRate=" + stableMetrics.successRate + ", requests=" + stableMetrics.requestCount);
             
-            LOG.info("Fetching canary metrics...");
+            Log.debug("Fetching canary metrics...");
             PodMetrics canaryMetrics = fetchMetricsFromPods("canary");
-            LOG.info("Canary metrics: successRate=" + canaryMetrics.successRate + ", requests=" + canaryMetrics.requestCount);
+            Log.debug("Canary metrics: successRate=" + canaryMetrics.successRate + ", requests=" + canaryMetrics.requestCount);
             
             return new VersionMetrics(
                 stableMetrics.successRate,
@@ -398,13 +389,13 @@ public class RolloutStatusResource {
                 canaryMetrics.requestCount
             );
         } catch (Exception e) {
-            LOG.error("Error fetching version metrics", e);
+            Log.error("Error fetching version metrics", e);
             return VersionMetrics.unavailable();
         }
     }
 
     private PodMetrics fetchMetricsFromPods(String roleLabel) {
-        LOG.info("fetchMetricsFromPods called for role: " + roleLabel);
+        Log.debug("fetchMetricsFromPods called for role: " + roleLabel);
         try {
             List<Pod> pods = kubernetesClient.pods()
                 .inNamespace(rolloutNamespace)
@@ -413,10 +404,10 @@ public class RolloutStatusResource {
                 .list()
                 .getItems();
             
-            LOG.info("Found " + pods.size() + " pods with role: " + roleLabel);
+            Log.debug("Found " + pods.size() + " pods with role: " + roleLabel);
             
             if (pods.isEmpty()) {
-                LOG.warn("No pods found with role: " + roleLabel);
+                Log.warn("No pods found with role: " + roleLabel);
                 return new PodMetrics(0.0, 0);
             }
             
@@ -428,12 +419,12 @@ public class RolloutStatusResource {
                 try {
                     String podIp = pod.getStatus().getPodIP();
                     if (podIp == null) {
-                        LOG.warn("Pod has no IP: " + pod.getMetadata().getName());
+                        Log.warn("Pod has no IP: " + pod.getMetadata().getName());
                         continue;
                     }
                     
                     String podUrl = "http://" + podIp + ":8080/api/status";
-                    LOG.info("Fetching metrics from pod " + pod.getMetadata().getName() + " at " + podUrl);
+                    Log.debug("Fetching metrics from pod " + pod.getMetadata().getName() + " at " + podUrl);
                     URL url = new URL(podUrl);
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("GET");
@@ -441,7 +432,7 @@ public class RolloutStatusResource {
                     conn.setReadTimeout(1000);
                     
                     int responseCode = conn.getResponseCode();
-                    LOG.info("Response code from pod " + pod.getMetadata().getName() + ": " + responseCode);
+                    Log.debug("Response code from pod " + pod.getMetadata().getName() + ": " + responseCode);
                     if (responseCode == 200) {
                         BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                         StringBuilder response = new StringBuilder();
@@ -452,7 +443,7 @@ public class RolloutStatusResource {
                         in.close();
                         
                         String jsonResponse = response.toString();
-                        LOG.info("Got response from pod: " + jsonResponse);
+                        Log.debug("Got response from pod: " + jsonResponse);
                         
                         int successRateIndex = jsonResponse.indexOf("\"successRate\":");
                         if (successRateIndex != -1) {
@@ -477,9 +468,9 @@ public class RolloutStatusResource {
                         successfulPods++;
                     }
                 } catch (java.net.SocketTimeoutException e) {
-                    LOG.debug("Pod not reachable (timeout): " + pod.getMetadata().getName());
+                    Log.debug("Pod not reachable (timeout): " + pod.getMetadata().getName());
                 } catch (Exception e) {
-                    LOG.debug("Could not fetch metrics from pod " + pod.getMetadata().getName() + ": " + e.getMessage());
+                    Log.debug("Could not fetch metrics from pod " + pod.getMetadata().getName() + ": " + e.getMessage());
                 }
             }
             
@@ -487,7 +478,7 @@ public class RolloutStatusResource {
             return new PodMetrics(avgSuccessRate, totalRequests);
             
         } catch (Exception e) {
-            LOG.debug("Error fetching metrics from pods with role " + roleLabel + ": " + e.getMessage());
+            Log.debug("Error fetching metrics from pods with role " + roleLabel + ": " + e.getMessage());
             return new PodMetrics(0.0, 0);
         }
     }

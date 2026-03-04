@@ -52,4 +52,3 @@ public class MetricData {
     }
 }
 
-// Made with Bob

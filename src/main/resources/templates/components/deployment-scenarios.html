@@ -1,0 +1,30 @@
+<!-- Deployment Scenarios Component -->
+<div>
+    <div class="scenario-card">
+        <div class="card-header">
+            <h2 class="card-title">Deployment Scenarios</h2>
+        </div>
+        <div class="scenario-grid">
+            <div class="current-scenario">
+                <div class="current-scenario-label">Stable Pods</div>
+                <div class="current-scenario-value" id="stableScenario">{scenario}</div>
+            </div>
+            <div class="current-scenario">
+                <div class="current-scenario-label">Canary Pods</div>
+                <div class="current-scenario-value" id="canaryScenario">none</div>
+            </div>
+        </div>
+        <div class="scenario-about">
+            <div class="scenario-about-box">
+                <h3 class="scenario-about-title">About Scenarios</h3>
+                <div class="scenario-about-content">
+                    <p><strong class="success">Success Scenario:</strong> Simulates a healthy deployment with 99% success rate and low latency. The AI analysis will approve the rollout and traffic will gradually shift to the new version.</p>
+                    <p><strong class="failure">Failure Scenario:</strong> Simulates a problematic deployment with 70% success rate and high latency. The AI analysis will detect issues and recommend rollback to prevent impact.</p>
+                </div>
+            </div>
+            <div class="scenario-note">
+                <strong>To switch scenarios:</strong> Update the <code>SCENARIO_MODE</code> environment variable in the rollout configuration and trigger a new deployment.
+            </div>
+        </div>
+    </div>
+</div>

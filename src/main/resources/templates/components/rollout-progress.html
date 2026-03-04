@@ -1,0 +1,36 @@
+<!-- Rollout Progress Component -->
+<div>
+    <div class="card">
+        <div class="card-header rollout-progress-header">
+            <h2 class="card-title">Rollout Progress</h2>
+            <div id="rolloutStatusBadge"></div>
+        </div>
+        <div class="rollout-timeline">
+            <div class="timeline-track">
+                <div class="timeline-progress" id="timelineProgress"></div>
+            </div>
+            <div class="timeline-stages" id="timelineStages">
+                <div class="stage" data-weight="0">
+                    <div class="stage-marker">0%</div>
+                    <div class="stage-label">Start</div>
+                </div>
+                <div class="stage" data-weight="10">
+                    <div class="stage-marker">10%</div>
+                    <div class="stage-label">Initial</div>
+                </div>
+                <div class="stage" data-weight="30">
+                    <div class="stage-marker">10%</div>
+                    <div class="stage-label">Analysis</div>
+                </div>
+                <div class="stage" data-weight="60">
+                    <div class="stage-marker">60%</div>
+                    <div class="stage-label">Expand</div>
+                </div>
+                <div class="stage" data-weight="100">
+                    <div class="stage-marker">100%</div>
+                    <div class="stage-label">Complete</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

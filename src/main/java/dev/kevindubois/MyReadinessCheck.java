@@ -34,4 +34,3 @@ public class MyReadinessCheck implements HealthCheck {
     }
 }
 
-// Made with Bob

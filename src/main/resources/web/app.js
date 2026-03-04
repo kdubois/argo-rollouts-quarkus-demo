@@ -51,6 +51,7 @@ function showDemoMode() {
 function updateRolloutProgress(rolloutData) {
     const phase = rolloutData.phase || 'Unknown';
     const canaryWeight = rolloutData.canaryWeight || 0;
+    const currentStepIndex = rolloutData.currentStepIndex;
     
     const badge = document.getElementById('rolloutStatusBadge');
     const statusClass = phase.toLowerCase().replace(/\s+/g, '-');
@@ -89,11 +90,24 @@ function updateRolloutProgress(rolloutData) {
     const stages = document.querySelectorAll('.stage');
     stages.forEach(stage => {
         const weight = parseInt(stage.dataset.weight);
+        const stepAttr = stage.dataset.step;
         stage.classList.remove('active', 'completed', 'paused');
         
-        if (weight < canaryWeight) {
+        // Check if this stage matches the current step
+        let isCurrentStage = false;
+        let isPastStage = false;
+        if (currentStepIndex !== null && currentStepIndex !== undefined && stepAttr) {
+            const steps = stepAttr.split(',').map(s => parseInt(s.trim()));
+            isCurrentStage = steps.includes(currentStepIndex);
+            // Check if all steps for this stage are less than current step
+            isPastStage = steps.every(s => s < currentStepIndex);
+        }
+        
+        // Mark stages as completed if they're in the past
+        if (isPastStage || weight < canaryWeight) {
             stage.classList.add('completed');
-        } else if (weight === canaryWeight) {
+        } else if (isCurrentStage || (weight === canaryWeight && (currentStepIndex === null || currentStepIndex === undefined))) {
+            // Current stage
             if (phase === 'Paused') {
                 stage.classList.add('paused');
             } else {
@@ -172,9 +186,7 @@ function updateAIAnalysis(rolloutData, metricsData, versionMetrics) {
             errorLogContainer.style.display = 'none';
             
             const canarySegment = document.getElementById('canarySegment');
-            canarySegment.classList.add('healthy');
             canarySegment.classList.remove('degraded');
-            document.getElementById('canaryLegendColor').style.background = 'linear-gradient(135deg, #059669, #10b981)';
         } else if (analysis.phase === 'Failed' || analysis.phase === 'Degraded' || analysis.successful === false) {
             aiIcon.textContent = '❌';
             aiStatusTitle.textContent = 'Analysis Failed';
@@ -192,8 +204,6 @@ function updateAIAnalysis(rolloutData, metricsData, versionMetrics) {
             
             const canarySegment = document.getElementById('canarySegment');
             canarySegment.classList.add('degraded');
-            canarySegment.classList.remove('healthy');
-            document.getElementById('canaryLegendColor').style.background = 'linear-gradient(135deg, #dc2626, #ef4444)';
         } else if (analysis.phase === 'Error') {
             aiIcon.textContent = '⚠️';
             aiStatusTitle.textContent = 'Analysis Error';
@@ -350,16 +360,17 @@ function visualizeRealRequests(versionMetrics) {
     const canaryErrorDelta = canaryErrorCount - previousCanaryErrors;
     const canarySuccessDelta = canaryDelta - canaryErrorDelta;
     
-    for (let i = 0; i < Math.min(stableDelta, 60); i++) {
-        setTimeout(() => animateRequest('stable'), i * 15);
+    // Reduce max dots to 20 but increase frequency (faster animation)
+    for (let i = 0; i < Math.min(stableDelta, 20); i++) {
+        setTimeout(() => animateRequest('stable'), i * 8);
     }
     
-    for (let i = 0; i < Math.min(canarySuccessDelta, 60); i++) {
-        setTimeout(() => animateRequest('canary-success'), i * 15 + 5);
+    for (let i = 0; i < Math.min(canarySuccessDelta, 20); i++) {
+        setTimeout(() => animateRequest('canary-success'), i * 8 + 3);
     }
     
-    for (let i = 0; i < Math.min(canaryErrorDelta, 60); i++) {
-        setTimeout(() => animateRequest('canary-error'), i * 15 + 8);
+    for (let i = 0; i < Math.min(canaryErrorDelta, 20); i++) {
+        setTimeout(() => animateRequest('canary-error'), i * 8 + 5);
     }
     
     previousStableRequests = stableRequests;

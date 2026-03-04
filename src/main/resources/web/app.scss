@@ -324,10 +324,6 @@ body::before {
 }
 
 .traffic-canary {
-    background: linear-gradient(135deg, #d97706, #f59e0b);
-}
-
-.traffic-canary.healthy {
     background: linear-gradient(135deg, #059669, #10b981);
 }
 

@@ -6,7 +6,8 @@ public record RolloutInfo(
     Integer canaryWeight,
     Integer stableWeight,
     String message,
-    AnalysisInfo analysis
+    AnalysisInfo analysis,
+    Integer currentStepIndex
 ) {
     public static RolloutInfo notFound() {
         return new RolloutInfo(
@@ -15,6 +16,7 @@ public record RolloutInfo(
             0,
             100,
             "No active rollout found",
+            null,
             null
         );
     }

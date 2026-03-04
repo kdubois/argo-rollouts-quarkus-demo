@@ -1,10 +1,9 @@
 # TODO
 
+* increase error rate to make it more obvious something is wrong.
 
-* The current rollout message isn't very useful. add an AI service to the argo-rollouts-quarkus-demo that summarizes the kubernetes agent analysis and adds it to the screen. Make this asynchronous though.
-
-* The analysis sometimes takes too long, resulting in the rollout going to > 60% before being rolled back.  There is a lot of back-and-forth between the agents and the LLM. can we reduce this?
-
-* Remove the old KubernetesAgent
+* The current rollout message isn't very useful. add an AI service to the argo-rollouts-quarkus-demo that uses the same model configs as the kubernetes-agent. The ai service should create a summarization of the kubernetes agent analysis and adds it to the screen. Make this asynchronous though.
 
 * it always says "waiting for analysis to start" on the dashboard, even when an analysis is underway. 
+
+* integrate bob shell to analyze the code from issues and create PRs or let someone review them.

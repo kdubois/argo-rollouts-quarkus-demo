@@ -80,6 +80,7 @@ public class RolloutStatusResource {
                     0,
                     100,
                     "Error fetching rollout: " + e.getMessage(),
+                    null,
                     null
             );
         }
@@ -92,6 +93,7 @@ public class RolloutStatusResource {
         String message = getMessage(status);
         Integer canaryWeight = getCanaryWeight(status);
         Integer stableWeight = 100 - canaryWeight;
+        Integer currentStepIndex = getCurrentStepIndex(status);
 
         AnalysisInfo analysisInfo = getAnalysisInfo(status);
 
@@ -101,7 +103,8 @@ public class RolloutStatusResource {
                 canaryWeight,
                 stableWeight,
                 message,
-                analysisInfo
+                analysisInfo,
+                currentStepIndex
         );
     }
 
@@ -119,6 +122,18 @@ public class RolloutStatusResource {
     private String getMessage(Map<String, Object> status) {
         Object message = status.get("message");
         return message != null ? message.toString() : "";
+    }
+
+    private Integer getCurrentStepIndex(Map<String, Object> status) {
+        try {
+            Object currentStepIndex = status.get("currentStepIndex");
+            if (currentStepIndex instanceof Number) {
+                return ((Number) currentStepIndex).intValue();
+            }
+        } catch (Exception e) {
+            Log.debug("Could not extract current step index", e);
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")

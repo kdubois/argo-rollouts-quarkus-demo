@@ -2,7 +2,6 @@ package dev.kevindubois.demo;
 
 import dev.kevindubois.demo.model.DeploymentStatus;
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -18,11 +17,12 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * REST resource that exposes metrics and status endpoints for the demo application.
+ * This resource tracks HTTP request metrics and delegates scenario simulation to DemoScenarioService.
+ */
 @Path("/api")
 @ApplicationScoped
 public class MetricsResource {
@@ -32,8 +32,8 @@ public class MetricsResource {
     @Inject
     MeterRegistry registry;
 
-    @ConfigProperty(name = "scenario.mode", defaultValue = "happy")
-    String scenarioMode;
+    @Inject
+    DemoScenarioService scenarioService;
 
     @ConfigProperty(name = "app.version", defaultValue = "1.0.0")
     String appVersion;
@@ -81,7 +81,7 @@ public class MetricsResource {
         Gauge.builder("app_version_info", () -> 1.0)
                 .description("Application version information")
                 .tag("version", appVersion)
-                .tag("scenario", scenarioMode)
+                .tag("scenario", scenarioService.getScenarioMode())
                 .register(registry);
     }
 
@@ -100,13 +100,21 @@ public class MetricsResource {
         double successRate = calculateSuccessRate();
         String status = "healthy";
         
-        if ("failure".equals(scenarioMode)) {
+        String currentScenario = scenarioService.getScenarioMode();
+        if ("failure".equals(currentScenario)) {
             status = successRate < 0.8 ? "degraded" : "recovering";
+        }
+
+        // Add bug scenario indicators to status
+        if (scenarioService.isMemoryLeakEnabled() ||
+            scenarioService.isConnectionLeakEnabled() ||
+            scenarioService.isCpuSpikeEnabled()) {
+            status = "buggy-" + status;
         }
 
         return new DeploymentStatus(
                 appVersion,
-                scenarioMode,
+                currentScenario,
                 successRate * 100,
                 totalRequests.get(),
                 status
@@ -117,16 +125,29 @@ public class MetricsResource {
     @Path("/scenario")
     @Produces(MediaType.APPLICATION_JSON)
     public ScenarioInfo getScenarioInfo() {
-        return new ScenarioInfo(scenarioMode, appVersion);
+        return new ScenarioInfo(
+            scenarioService.getScenarioMode(),
+            appVersion,
+            scenarioService.isMemoryLeakEnabled(),
+            scenarioService.isConnectionLeakEnabled(),
+            scenarioService.isCpuSpikeEnabled()
+        );
     }
 
     public static class ScenarioInfo {
         public String scenario;
         public String version;
+        public boolean memoryLeakEnabled;
+        public boolean connectionLeakEnabled;
+        public boolean cpuSpikeEnabled;
 
-        public ScenarioInfo(String scenario, String version) {
+        public ScenarioInfo(String scenario, String version, boolean memoryLeakEnabled,
+                           boolean connectionLeakEnabled, boolean cpuSpikeEnabled) {
             this.scenario = scenario;
             this.version = version;
+            this.memoryLeakEnabled = memoryLeakEnabled;
+            this.connectionLeakEnabled = connectionLeakEnabled;
+            this.cpuSpikeEnabled = cpuSpikeEnabled;
         }
     }
 
@@ -144,36 +165,13 @@ public class MetricsResource {
         requestCounter.increment();
         totalRequests.incrementAndGet();
 
-        boolean isSuccess;
-        long latencyMs;
+        // Delegate scenario processing to DemoScenarioService
+        DemoScenarioService.ScenarioResult result = scenarioService.processRequest();
+        
+        boolean isSuccess = result.isSuccess();
+        long latencyMs = result.getLatencyMs();
 
-        if ("failure".equals(scenarioMode)) {
-            isSuccess = Math.random() > 0.3;
-            latencyMs = (long) (100 + Math.random() * 400);
-            
-            if (!isSuccess) {
-                LOG.error("CRITICAL ERROR: Request failed with database connection timeout after " + latencyMs + "ms",
-                    new RuntimeException("Database connection pool exhausted - unable to acquire connection"));
-            } else if (latencyMs > 300) {
-                LOG.error("PERFORMANCE DEGRADATION: High latency detected: " + latencyMs + "ms - service is struggling");
-            }
-            
-            if (totalRequests.get() % 10 == 0) {
-                double currentSuccessRate = calculateSuccessRate();
-                if (currentSuccessRate < 0.8) {
-                    LOG.error("ALERT: Success rate dropped to " + String.format("%.1f%%", currentSuccessRate * 100) +
-                        " - CANARY DEPLOYMENT IS FAILING");
-                }
-            }
-        } else {
-            isSuccess = Math.random() > 0.01;
-            latencyMs = (long) (10 + Math.random() * 40);
-            
-            if (!isSuccess) {
-                LOG.warn("Occasional request failure: " + latencyMs + "ms");
-            }
-        }
-
+        // Record metrics
         requestTimer.record(Duration.ofMillis(latencyMs));
 
         if (isSuccess) {
@@ -181,6 +179,15 @@ public class MetricsResource {
             successfulRequests.incrementAndGet();
         } else {
             errorCounter.increment();
+        }
+
+        // Log alerts for failure scenario
+        if ("failure".equals(scenarioService.getScenarioMode()) && totalRequests.get() % 10 == 0) {
+            double currentSuccessRate = calculateSuccessRate();
+            if (currentSuccessRate < 0.8) {
+                LOG.error("ALERT: Success rate dropped to " + String.format("%.1f%%", currentSuccessRate * 100) +
+                    " - CANARY DEPLOYMENT IS FAILING");
+            }
         }
     }
 }

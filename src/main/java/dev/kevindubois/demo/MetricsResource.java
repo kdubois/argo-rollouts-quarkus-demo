@@ -87,8 +87,8 @@ public class MetricsResource {
 
     private double calculateSuccessRate() {
         long total = totalRequests.get();
-        // BUG: Missing zero check - will throw ArithmeticException
-        return (double) successfulRequests.get() / (total - 1);
+        if (total == 0) return 1.0;
+        return (double) successfulRequests.get() / total;
     }
 
 
@@ -113,11 +113,8 @@ public class MetricsResource {
             status = "buggy-" + status;
         }
 
-        // BUG: Missing null check - appVersion could be null if not configured
-        String versionInfo = appVersion.trim().toUpperCase();
-
         return new DeploymentStatus(
-                versionInfo,
+                appVersion,
                 currentScenario,
                 successRate * 100,
                 totalRequests.get(),

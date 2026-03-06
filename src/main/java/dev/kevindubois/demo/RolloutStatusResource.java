@@ -131,7 +131,7 @@ public class RolloutStatusResource {
                 return ((Number) currentStepIndex).intValue();
             }
         } catch (Exception e) {
-            Log.debug("Could not extract current step index", e);
+            Log.error("Could not extract current step index", e);
         }
         return null;
     }
@@ -189,7 +189,7 @@ public class RolloutStatusResource {
                 }
             }
         } catch (Exception e) {
-            Log.debug("Could not extract canary weight", e);
+            Log.error("Could not extract canary weight", e);
         }
         return 0;
     }
@@ -311,7 +311,7 @@ public class RolloutStatusResource {
             
             return errorLog.length() > 0 ? errorLog.toString() : null;
         } catch (Exception e) {
-            Log.debug("Could not extract error Log from analysis status", e);
+            Log.error("Could not extract error Log from analysis status", e);
             return null;
         }
     }
@@ -493,7 +493,7 @@ public class RolloutStatusResource {
             return new PodMetrics(avgSuccessRate, totalRequests);
             
         } catch (Exception e) {
-            Log.debug("Error fetching metrics from pods with role " + roleLabel + ": " + e.getMessage());
+            Log.error("Error fetching metrics from pods with role " + roleLabel + ": " + e.getMessage());
             return new PodMetrics(0.0, 0);
         }
     }

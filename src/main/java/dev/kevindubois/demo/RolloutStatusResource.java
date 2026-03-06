@@ -338,7 +338,7 @@ public class RolloutStatusResource {
                 .withLabel("app", rolloutName)
                 .withLabel("role", roleLabel)
                 .list()
-                .getItems();
+                .getItems();            
             
             if (pods.isEmpty()) {
                 Log.debug("No pods found with role: " + roleLabel);

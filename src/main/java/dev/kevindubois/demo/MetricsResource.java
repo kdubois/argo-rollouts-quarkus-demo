@@ -38,6 +38,9 @@ public class MetricsResource {
     @ConfigProperty(name = "app.version", defaultValue = "1.0.0")
     String appVersion;
 
+    @ConfigProperty(name = "enable.null.pointer.bug", defaultValue = "false")
+    boolean enableNullPointerBug;
+
     private Counter requestCounter;
     private Counter successCounter;
     private Counter errorCounter;
@@ -113,12 +116,15 @@ public class MetricsResource {
             status = "buggy-" + status;
         }
 
-        // BUG: Null pointer exception - missing null check
+        // BUG: Null pointer exception - missing null check (only when flag is enabled)
         String versionUpper = appVersion.toUpperCase();
         int length = versionUpper.length();
-        // Intentionally dereference null to cause NPE
-        String nullString = null;
-        length = nullString.length();  // NullPointerException here!
+        
+        // Intentionally dereference null to cause NPE (only for scenario 2)
+        if (enableNullPointerBug) {
+            String nullString = null;
+            length = nullString.length();  // NullPointerException here!
+        }
 
         return new DeploymentStatus(
                 appVersion,

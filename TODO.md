@@ -1,12 +1,8 @@
 # TODO
 
-* PR is inaccurate. 
+* PR is inaccurate. -> expected since the LLM doesn't have access to the code. either have it read the code in github or use external dev spaces or something
 
 * issue could be more descriptive
-
-* are the overlays necessary or is an image tag change all we need?
-
-* UI is broken.
 
 * The current rollout message isn't very useful. add an AI service to the argo-rollouts-quarkus-demo that uses the same model configs as the kubernetes-agent. The ai service should create a summarization of the kubernetes agent analysis and adds it to the screen. Make this asynchronous though.
 

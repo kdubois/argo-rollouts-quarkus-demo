@@ -8,14 +8,12 @@ function updateDashboard() {
     Promise.all([
         fetch('/api/status').then(r => r.json()),
         fetch('/api/rollout/status').then(r => r.json()),
-        fetch('/api/rollout/scenarios').then(r => r.json()),
         fetch('/api/rollout/metrics').then(r => r.json())
     ])
-    .then(([metricsData, rolloutData, scenariosData, versionMetrics]) => {
+    .then(([metricsData, rolloutData, versionMetrics]) => {
         updateRolloutProgress(rolloutData);
         updateTrafficDistribution(rolloutData);
         updateAIAnalysis(rolloutData, metricsData, versionMetrics);
-        updateScenarios(scenariosData);
         visualizeRealRequests(versionMetrics);
         clearError();
     })
@@ -318,11 +316,6 @@ function updateSuccessRateGraph(currentSuccessRate) {
     ctx.lineTo(width, thresholdY);
     ctx.stroke();
     ctx.setLineDash([]);
-}
-
-function updateScenarios(scenariosData) {
-    document.getElementById('stableScenario').textContent = scenariosData.stable || 'unknown';
-    document.getElementById('canaryScenario').textContent = scenariosData.canary || 'none';
 }
 
 let previousStableRequests = 0;

@@ -327,7 +327,6 @@ function updateScenarios(scenariosData) {
 
 let previousStableRequests = 0;
 let previousCanaryRequests = 0;
-let previousCanaryErrors = 0;
 
 function animateRequest(type) {
     const container = document.getElementById('requestVisualization');
@@ -352,30 +351,30 @@ function visualizeRealRequests(versionMetrics) {
     const canaryRequests = versionMetrics.canaryRequestCount || 0;
     const canarySuccessRate = versionMetrics.canarySuccessRate || 100;
     
-    const stableDelta = stableRequests - previousStableRequests;
-    const canaryDelta = canaryRequests - previousCanaryRequests;
+    const stableDelta = Math.max(0, stableRequests - previousStableRequests);
+    const canaryDelta = Math.max(0, canaryRequests - previousCanaryRequests);
     
-    const canarySuccessCount = Math.round((canarySuccessRate / 100) * canaryRequests);
-    const canaryErrorCount = canaryRequests - canarySuccessCount;
-    const canaryErrorDelta = canaryErrorCount - previousCanaryErrors;
-    const canarySuccessDelta = canaryDelta - canaryErrorDelta;
+    // Calculate success and error deltas based on success rate
+    const canarySuccessDelta = Math.round((canarySuccessRate / 100) * canaryDelta);
+    const canaryErrorDelta = canaryDelta - canarySuccessDelta;
     
-    // Reduce max dots to 20 but increase frequency (faster animation)
+    // Animate stable requests (blue dots)
     for (let i = 0; i < Math.min(stableDelta, 20); i++) {
-        setTimeout(() => animateRequest('stable'), i * 8);
+        setTimeout(() => animateRequest('stable'), i * 50);
     }
     
+    // Animate canary success requests (green dots)
     for (let i = 0; i < Math.min(canarySuccessDelta, 20); i++) {
-        setTimeout(() => animateRequest('canary-success'), i * 8 + 3);
+        setTimeout(() => animateRequest('canary-success'), i * 50 + 10);
     }
     
+    // Animate canary error requests (red dots)
     for (let i = 0; i < Math.min(canaryErrorDelta, 20); i++) {
-        setTimeout(() => animateRequest('canary-error'), i * 8 + 5);
+        setTimeout(() => animateRequest('canary-error'), i * 50 + 20);
     }
     
     previousStableRequests = stableRequests;
     previousCanaryRequests = canaryRequests;
-    previousCanaryErrors = canaryErrorCount;
 }
 
 function showError(message) {

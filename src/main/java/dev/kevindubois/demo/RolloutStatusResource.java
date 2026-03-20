@@ -423,7 +423,8 @@ public class RolloutStatusResource {
             
             if (pods.isEmpty()) {
                 Log.warn("No pods found with role: " + roleLabel);
-                return new PodMetrics(0.0, 0);
+                // Return 100% success rate with 0 requests when no pods found
+                return new PodMetrics(100.0, 0);
             }
             
             double totalSuccessRate = 0.0;
@@ -443,8 +444,8 @@ public class RolloutStatusResource {
                     URL url = new URL(podUrl);
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("GET");
-                    conn.setConnectTimeout(1000);
-                    conn.setReadTimeout(1000);
+                    conn.setConnectTimeout(2000);
+                    conn.setReadTimeout(2000);
                     
                     int responseCode = conn.getResponseCode();
                     Log.debug("Response code from pod " + pod.getMetadata().getName() + ": " + responseCode);
@@ -489,12 +490,20 @@ public class RolloutStatusResource {
                 }
             }
             
-            double avgSuccessRate = successfulPods > 0 ? totalSuccessRate / successfulPods : 0.0;
+            // If no pods were reachable, return 100% success rate with 0 requests
+            // This prevents showing 0% when pods are just starting up
+            if (successfulPods == 0) {
+                Log.warn("No pods were reachable for role: " + roleLabel);
+                return new PodMetrics(100.0, 0);
+            }
+            
+            double avgSuccessRate = totalSuccessRate / successfulPods;
+            Log.debug("Calculated metrics for " + roleLabel + ": successRate=" + avgSuccessRate + ", requests=" + totalRequests);
             return new PodMetrics(avgSuccessRate, totalRequests);
             
         } catch (Exception e) {
             Log.error("Error fetching metrics from pods with role " + roleLabel + ": " + e.getMessage());
-            return new PodMetrics(0.0, 0);
+            return new PodMetrics(100.0, 0);
         }
     }
     

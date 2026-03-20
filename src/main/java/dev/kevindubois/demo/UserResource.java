@@ -19,7 +19,7 @@ public class UserResource {
     @GET
     @Path("/{id}")
     public Response getUser(@PathParam("id") String userId) {
-        LOG.info("Fetching user: " + userId);
+        LOG.debug("Fetching user: " + userId);
         
         if (!nullPointerBugEnabled) {
             // Safe implementation when bug is disabled

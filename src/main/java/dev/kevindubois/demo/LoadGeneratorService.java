@@ -50,10 +50,10 @@ public class LoadGeneratorService {
     
     /**
      * Scheduled method that generates load at the configured rate.
-     * With 50 req/sec, this runs every 20ms (1000ms / 50 = 20ms).
-     * The delay is calculated dynamically based on requestsPerSecond.
+     * Runs every second and generates the configured number of requests per second.
+     * Quarkus scheduler doesn't support intervals less than 1 second, so we batch the requests.
      */
-    @Scheduled(every = "20ms", delay = 5, delayUnit = java.util.concurrent.TimeUnit.SECONDS)
+    @Scheduled(every = "1s", delay = 5, delayUnit = java.util.concurrent.TimeUnit.SECONDS)
     void generateLoad() {
         if (!enabled) {
             return;
@@ -66,37 +66,40 @@ public class LoadGeneratorService {
             LOG.info("Load generator will hit /api/status (80%) and /api/user (20%) endpoints");
         }
         
-        // Generate request asynchronously to avoid blocking the scheduler
-        CompletableFuture.runAsync(() -> {
-            try {
-                // 20% of requests hit the user endpoint, 80% hit status endpoint
-                if (Math.random() < 0.2) {
-                    // Call user endpoint with random user ID (1-10)
-                    int userId = (int) (Math.random() * 10) + 1;
-                    userResource.getUser(String.valueOf(userId));
-                } else {
-                    // Call the status endpoint
-                    metricsResource.getStatus();
+        // Generate the configured number of requests per second
+        for (int i = 0; i < requestsPerSecond; i++) {
+            // Generate request asynchronously to avoid blocking the scheduler
+            CompletableFuture.runAsync(() -> {
+                try {
+                    // 20% of requests hit the user endpoint, 80% hit status endpoint
+                    if (Math.random() < 0.2) {
+                        // Call user endpoint with random user ID (1-10)
+                        int userId = (int) (Math.random() * 10) + 1;
+                        userResource.getUser(String.valueOf(userId));
+                    } else {
+                        // Call the status endpoint
+                        metricsResource.getStatus();
+                    }
+                    
+                    long count = totalGeneratedRequests.incrementAndGet();
+                    
+                    // Log progress every 100 requests
+                    if (count % 100 == 0) {
+                        LOG.debug("Load generator: " + count + " requests generated");
+                    }
+                    
+                    // Log milestone every 1000 requests
+                    if (count % 1000 == 0) {
+                        LOG.info("Load generator milestone: " + count + " total requests generated");
+                    }
+                    
+                } catch (Exception e) {
+                    // Catch and log exceptions without failing the app
+                    LOG.error("Load generator request failed: " + e.getMessage());
+                    // Don't rethrow - we want the load generator to continue
                 }
-                
-                long count = totalGeneratedRequests.incrementAndGet();
-                
-                // Log progress every 100 requests
-                if (count % 100 == 0) {
-                    LOG.debug("Load generator: " + count + " requests generated");
-                }
-                
-                // Log milestone every 1000 requests
-                if (count % 1000 == 0) {
-                    LOG.info("Load generator milestone: " + count + " total requests generated");
-                }
-                
-            } catch (Exception e) {
-                // Catch and log exceptions without failing the app
-                LOG.error("Load generator request failed: " + e.getMessage());
-                // Don't rethrow - we want the load generator to continue
-            }
-        }, executorService);
+            }, executorService);
+        }
     }
     
     /**

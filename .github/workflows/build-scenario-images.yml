@@ -1,0 +1,88 @@
+name: Build Scenario Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**'
+  workflow_dispatch:
+
+jobs:
+  build-scenarios:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        scenario:
+          - name: stable
+            tag: v1.stable
+            null_pointer: "false"
+            memory_leak: "false"
+          - name: null-pointer-bug
+            tag: v2.nullpointer
+            null_pointer: "true"
+            memory_leak: "false"
+          - name: memory-leak
+            tag: v3.memoryleak
+            null_pointer: "false"
+            memory_leak: "true"
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'maven'
+      
+      - name: Update application.properties for scenario
+        run: |
+          echo "Configuring scenario: ${{ matrix.scenario.name }}"
+          sed -i "s/enable.null.pointer.bug=.*/enable.null.pointer.bug=${{ matrix.scenario.null_pointer }}/" src/main/resources/application.properties
+          sed -i "s/enable.memory.leak=.*/enable.memory.leak=${{ matrix.scenario.memory_leak }}/" src/main/resources/application.properties
+          sed -i "s/enable.connection.leak=.*/enable.connection.leak=false/" src/main/resources/application.properties
+          sed -i "s/enable.cpu.spike=.*/enable.cpu.spike=false/" src/main/resources/application.properties
+          sed -i "s/load.generator.enabled=.*/load.generator.enabled=true/" src/main/resources/application.properties
+          echo "Updated application.properties:"
+          cat src/main/resources/application.properties | grep "enable\."
+          cat src/main/resources/application.properties | grep "load.generator.enabled"
+      
+      - name: Build with Maven
+        run: ./mvnw clean package -DskipTests
+      
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build and Push Docker Image
+        run: |
+          echo "Building Docker image for scenario: ${{ matrix.scenario.name }}"
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/argo-rollouts-quarkus-demo"
+          docker build -f src/main/docker/Dockerfile.jvm \
+            -t ${IMAGE_NAME}:${{ matrix.scenario.tag }} \
+            -t ${IMAGE_NAME}:${{ matrix.scenario.name }}-latest .
+          
+          echo "Pushing images to GitHub Container Registry..."
+          docker push ${IMAGE_NAME}:${{ matrix.scenario.tag }}
+          docker push ${IMAGE_NAME}:${{ matrix.scenario.name }}-latest
+          
+          echo "Successfully pushed images for scenario: ${{ matrix.scenario.name }}"
+      
+      - name: Image Summary
+        run: |
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/argo-rollouts-quarkus-demo"
+          echo "### Scenario: ${{ matrix.scenario.name }} :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Images pushed:**" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${IMAGE_NAME}:${{ matrix.scenario.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${IMAGE_NAME}:${{ matrix.scenario.name }}-latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Configuration:**" >> $GITHUB_STEP_SUMMARY
+          echo "- NullPointerException Bug: \`${{ matrix.scenario.null_pointer }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Memory Leak: \`${{ matrix.scenario.memory_leak }}\`" >> $GITHUB_STEP_SUMMARY
+

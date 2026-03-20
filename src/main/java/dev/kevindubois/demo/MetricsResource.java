@@ -113,6 +113,13 @@ public class MetricsResource {
             status = "buggy-" + status;
         }
 
+        // BUG: Null pointer exception - missing null check
+        String versionUpper = appVersion.toUpperCase();
+        int length = versionUpper.length();
+        // Intentionally dereference null to cause NPE
+        String nullString = null;
+        length = nullString.length();  // NullPointerException here!
+
         return new DeploymentStatus(
                 appVersion,
                 currentScenario,

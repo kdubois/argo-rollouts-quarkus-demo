@@ -43,6 +43,7 @@ public class LoadGeneratorService {
     
     @ConfigProperty(name = "load.generator.startup.delay", defaultValue = "5s")
     String startupDelay;
+        if (metricsResource == null || userResource == null) return;
     
     private final ExecutorService executorService = Executors.newFixedThreadPool(10);
     private final AtomicLong totalGeneratedRequests = new AtomicLong(0);

@@ -56,6 +56,10 @@ public class LoadGeneratorService {
     @Scheduled(every = "1s", delay = 5, delayUnit = java.util.concurrent.TimeUnit.SECONDS)
     void generateLoad() {
         if (!enabled) {
+        if (metricsResource == null || userResource == null) {
+            LOG.warn("Resources not initialized, skipping load generation");
+            return;
+        }
             return;
         }
         

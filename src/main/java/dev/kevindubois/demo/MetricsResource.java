@@ -122,6 +122,21 @@ public class MetricsResource {
         
         // Intentionally dereference null to cause NPE (only for scenario 2)
         if (enableNullPointerBug) {
+        if (enableNullPointerBug) {
+            try {
+                String nullString = null;
+                if (nullString == null) {
+                    LOG.warn("Null string encountered, skipping length calculation");
+                    return new DeploymentStatus(
+                            appVersion,
+                            currentScenario,
+                            successRate * 100,
+                            totalRequests.get(),
+                            status
+                    );
+                }
+                length = nullString.length();  // NullPointerException here!
+            
             try {
                 String nullString = null;
                 length = nullString.length();  // NullPointerException here!

@@ -46,9 +46,15 @@ public class DemoScenarioService {
     @PostConstruct
     void init() {
         // Initialize memory leak list if enabled
-        if (memoryLeakEnabled) {
+if (memoryLeakEnabled) {
             memoryLeakList = new ArrayList<>();
+memoryLeakList = new ArrayList<>();
             memoryLeakStartTime = System.currentTimeMillis();
+}
+memoryLeakList = null;
+} else {
+LOG.warn("MEMORY LEAK SCENARIO ENABLED - This will cause gradual memory exhaustion and latency increase");
+memoryLeakStartTime = System.currentTimeMillis();
             LOG.warn("MEMORY LEAK SCENARIO ENABLED - This will cause gradual memory exhaustion and latency increase");
         }
 

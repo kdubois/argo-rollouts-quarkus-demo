@@ -79,6 +79,9 @@ public class LoadGeneratorService {
                     } else {
                         // Call the status endpoint
                         metricsResource.getStatus();
+        if (metricsResource == null || userResource == null) {
+            LOG.warn("Resources not initialized, skipping load generation");
+            return;
                     }
                     
                     long count = totalGeneratedRequests.incrementAndGet();

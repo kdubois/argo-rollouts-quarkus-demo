@@ -124,6 +124,7 @@ public class MetricsResource {
         if (enableNullPointerBug) {
             try {
                 String nullString = null;
+if (nullString != null)
                 length = nullString.length();  // NullPointerException here!
             } catch (NullPointerException e) {
                 // Log the full stack trace so the AI agent can identify the file and line

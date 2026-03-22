@@ -61,6 +61,10 @@ public class LoadGeneratorService {
         
         // Check if resources are initialized before proceeding
         if (metricsResource == null || userResource == null) {
+        }
+            return;
+            LOG.warn("Resources not yet initialized, skipping load generation cycle");
+        if (metricsResource == null || userResource == null) {
             LOG.warn("Resources not yet initialized, skipping load generation cycle");
             return;
         }

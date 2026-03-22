@@ -36,6 +36,11 @@ public class UserResource {
         
         // BUG: No null check when bug is enabled
         User user = findUser(userId);
+if (user == null) {
+    return Response.status(404)
+        .entity(Map.of("error", "User not found"))
+        .build();
+}
         String userName = user.getName(); // Line 39 - NPE HERE when user is null!
         
         return Response.ok()

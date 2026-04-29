@@ -150,7 +150,7 @@ public class RolloutStatusResource {
             Object stableRS = status.get("stableRS");
             Object canaryRS = status.get("canaryRS");
             if ("Healthy".equals(phase) && stableRS != null && canaryRS != null && stableRS.equals(canaryRS)) {
-                return 100; // Fully rolled out and promoted
+                return 0; // Fully promoted: canary is now the new stable, no canary traffic remains
             }
             
             // Try to get actual weight from canary.weights.canary.weight first (most accurate)

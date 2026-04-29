@@ -54,7 +54,7 @@ function updateRolloutProgress(rolloutData) {
     if (rolloutMessage) {
         let message = rolloutData.message || '';
         if (!message) {
-            if (phase === 'Healthy' && canaryWeight === 100) {
+            if (phase === 'Healthy') {
                 message = 'Rollout completed successfully';
             } else if (phase === 'Progressing') {
                 message = 'Rollout in progress';
@@ -97,8 +97,8 @@ function updateRolloutProgress(rolloutData) {
 }
 
 function updateTrafficDistribution(rolloutData) {
-    const stableWeight = rolloutData.stableWeight ?? 100;
     const canaryWeight = rolloutData.canaryWeight ?? 0;
+    const stableWeight = 100 - canaryWeight;
 
     const stableSegment = document.getElementById('stableSegment');
     const canarySegment = document.getElementById('canarySegment');
@@ -116,87 +116,17 @@ function updateTrafficDistribution(rolloutData) {
 
 function updateAIAnalysis(rolloutData, metricsData, versionMetrics) {
     try {
-        const aiIcon = document.getElementById('aiIcon');
-        const aiStatusTitle = document.getElementById('aiStatusTitle');
-        const aiStatusSubtitle = document.getElementById('aiStatusSubtitle');
-        const aiDecision = document.getElementById('aiDecision');
-        const aiDecisionTitle = document.getElementById('aiDecisionTitle');
-        const aiDecisionMessage = document.getElementById('aiDecisionMessage');
-        const errorLogContainer = document.getElementById('errorLogContainer');
-
-        if (!aiIcon || !aiStatusTitle || !aiStatusSubtitle || !aiDecision || !aiDecisionTitle || !aiDecisionMessage || !errorLogContainer) return;
-
         const stableSuccessRate = Math.round(versionMetrics.stableSuccessRate || 0);
         const canarySuccessRate = Math.round(versionMetrics.canarySuccessRate || 0);
 
+        // Update canary segment visual state based on analysis
         const analysis = rolloutData.analysis;
-
-        if (analysis && analysis.phase && analysis.phase !== 'Pending' && analysis.phase !== 'NotStarted') {
-            aiIcon.classList.remove('analyzing');
-            aiDecision.classList.remove('success', 'failed');
-
-            if (analysis.phase === 'Running' || analysis.phase === 'Progressing' || analysis.phase === 'InProgress') {
-                aiIcon.classList.add('analyzing');
-                aiIcon.textContent = '🔄';
-                aiStatusTitle.textContent = 'Analysis Running';
-                aiStatusSubtitle.textContent = 'Evaluating deployment metrics';
-                aiDecisionTitle.textContent = 'Analyzing...';
-                aiDecisionMessage.textContent = analysis.message || 'AI agent is analyzing canary metrics.';
-                errorLogContainer.style.display = 'none';
-            } else if (analysis.phase === 'Successful' || analysis.successful === true) {
-                aiIcon.textContent = '✅';
-                aiStatusTitle.textContent = 'Analysis Successful';
-                aiStatusSubtitle.textContent = 'Metrics within thresholds';
-                aiDecision.classList.add('success');
-                aiDecisionTitle.textContent = '✓ Rollout Approved';
-                aiDecisionMessage.textContent = analysis.message || 'All metrics healthy. Rollout can proceed.';
-                errorLogContainer.style.display = 'none';
-                document.getElementById('canarySegment').classList.remove('degraded');
-            } else if (analysis.phase === 'Failed' || analysis.phase === 'Degraded' || analysis.successful === false) {
-                aiIcon.textContent = '❌';
-                aiStatusTitle.textContent = 'Analysis Failed';
-                aiStatusSubtitle.textContent = 'Issues detected';
-                aiDecision.classList.add('failed');
-                aiDecisionTitle.textContent = '✗ Rollback Recommended';
-                aiDecisionMessage.textContent = analysis.message || 'Canary metrics outside acceptable thresholds.';
-
-                if (analysis.errorLog) {
-                    errorLogContainer.style.display = 'block';
-                    document.getElementById('errorLogText').textContent = analysis.errorLog;
-                } else {
-                    errorLogContainer.style.display = 'none';
-                }
-                document.getElementById('canarySegment').classList.add('degraded');
-            } else if (analysis.phase === 'Error') {
-                aiIcon.textContent = '⚠️';
-                aiStatusTitle.textContent = 'Analysis Error';
-                aiStatusSubtitle.textContent = 'Error during analysis';
-                aiDecision.classList.add('failed');
-                aiDecisionTitle.textContent = 'Error';
-                aiDecisionMessage.textContent = analysis.message || 'An error occurred during analysis.';
-                if (analysis.errorLog) {
-                    errorLogContainer.style.display = 'block';
-                    document.getElementById('errorLogText').textContent = analysis.errorLog;
-                } else {
-                    errorLogContainer.style.display = 'none';
-                }
-            } else {
-                aiIcon.textContent = '📊';
-                aiStatusTitle.textContent = 'Analysis: ' + analysis.phase;
-                aiStatusSubtitle.textContent = 'Current status';
-                aiDecisionTitle.textContent = analysis.phase;
-                aiDecisionMessage.textContent = analysis.message || 'Analysis status: ' + analysis.phase;
-                errorLogContainer.style.display = 'none';
-            }
+        const canarySegment = document.getElementById('canarySegment');
+        
+        if (analysis && (analysis.phase === 'Failed' || analysis.phase === 'Degraded' || analysis.successful === false)) {
+            canarySegment.classList.add('degraded');
         } else {
-            aiIcon.classList.remove('analyzing');
-            aiIcon.textContent = '🤖';
-            aiStatusTitle.textContent = 'AI Monitoring';
-            aiStatusSubtitle.textContent = 'Waiting for analysis';
-            aiDecision.classList.remove('success', 'failed');
-            aiDecisionTitle.textContent = 'Waiting...';
-            aiDecisionMessage.textContent = analysis && analysis.message ? analysis.message : 'AI agent will analyze metrics once rollout progresses.';
-            errorLogContainer.style.display = 'none';
+            canarySegment.classList.remove('degraded');
         }
 
         const graphSuccessRate = (versionMetrics.canaryRequestCount > 0) ? canarySuccessRate : stableSuccessRate;
@@ -205,19 +135,6 @@ function updateAIAnalysis(rolloutData, metricsData, versionMetrics) {
         console.error('Error in updateAIAnalysis:', error);
     }
 }
-
-function toggleErrorLog() {
-    const content = document.getElementById('errorLogContent');
-    const toggle = document.getElementById('errorLogToggle');
-    if (content.classList.contains('expanded')) {
-        content.classList.remove('expanded');
-        toggle.classList.remove('expanded');
-    } else {
-        content.classList.add('expanded');
-        toggle.classList.add('expanded');
-    }
-}
-window.toggleErrorLog = toggleErrorLog;
 
 const successRateHistory = [];
 const maxHistoryPoints = 30;

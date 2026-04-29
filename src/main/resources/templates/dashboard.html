@@ -94,34 +94,8 @@
                 </div>
             </div>
 
-            <!-- Right: AI Decision + Metrics + Requests -->
+            <!-- Right: Metrics + Requests -->
             <div class="info-panel">
-                <!-- AI Decision Card -->
-                <div class="decision-card" id="aiDecisionCard">
-                    <div class="decision-header">
-                        <div class="decision-icon" id="aiIcon">&#x1F916;</div>
-                        <div class="decision-status">
-                            <div class="decision-title" id="aiStatusTitle">AI Monitoring</div>
-                            <div class="decision-subtitle" id="aiStatusSubtitle">Waiting for analysis</div>
-                        </div>
-                    </div>
-                    <div class="decision-body" id="aiDecision">
-                        <div class="decision-verdict" id="aiDecisionTitle">Waiting...</div>
-                        <div class="decision-message" id="aiDecisionMessage">
-                            The AI agent will analyze metrics once the rollout progresses.
-                        </div>
-                        <div class="error-log-container" id="errorLogContainer" style="display: none;">
-                            <div class="error-log-header" onclick="toggleErrorLog()">
-                                <span>Error Details</span>
-                                <span class="error-log-toggle" id="errorLogToggle">&#x25BC;</span>
-                            </div>
-                            <div class="error-log-content" id="errorLogContent">
-                                <div class="error-log-text" id="errorLogText"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Success Rate Graph -->
                 <div class="graph-card">
                     <div class="graph-title">Success Rate Trend <span class="graph-legend">--- 95% threshold</span></div>

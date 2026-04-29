@@ -402,8 +402,8 @@ body {
 
 // Timeline dot on left
 .activity-dot-indicator {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
     margin-top: 4px;
     flex-shrink: 0;
@@ -435,9 +435,9 @@ body {
 }
 
 .activity-type-badge {
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     font-weight: 800;
-    padding: 1px 7px;
+    padding: 2px 8px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     border-radius: 2px;
@@ -445,8 +445,8 @@ body {
     &.analysis-start { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
     &.tool-call { background: rgba(139, 92, 246, 0.2); color: #c084fc; }
     &.tool-result { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; }
-    &.decision { background: rgba(245, 158, 11, 0.25); color: #fbbf24; }
-    &.remediation { background: rgba(236, 72, 153, 0.2); color: #f9a8d4; }
+    &.decision { background: rgba(245, 158, 11, 0.3); color: #fde68a; }
+    &.remediation { background: rgba(236, 72, 153, 0.25); color: #fbcfe8; }
     &.error { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
     &.agent-start { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
     &.agent-complete { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; }
@@ -456,20 +456,20 @@ body {
 }
 
 .activity-timestamp {
-    font-size: 0.65rem;
-    color: #475569;
+    font-size: 0.7rem;
+    color: #64748b;
     font-family: 'Courier New', monospace;
 }
 
 .activity-message {
-    font-size: 0.9rem;
-    color: #e2e8f0;
-    line-height: 1.4;
+    font-size: 0.95rem;
+    color: #f1f5f9;
+    line-height: 1.5;
 }
 
 .activity-details {
     font-size: 0.8rem;
-    color: #94a3b8;
+    color: #b0bec5;
     margin-top: 2px;
     font-family: 'Courier New', monospace;
     line-height: 1.4;
@@ -478,24 +478,35 @@ body {
 
 // Decision events get special treatment
 .activity-item.decision-event {
-    background: rgba(245, 158, 11, 0.06);
-    border-left: 3px solid #f59e0b;
-    padding-left: 13px;
+    background: rgba(245, 158, 11, 0.12);
+    border-left: 4px solid #f59e0b;
+    padding-left: 12px;
+    padding-top: 14px;
+    padding-bottom: 14px;
 
     .activity-message {
-        font-size: 1rem;
+        font-size: 1.05rem;
         font-weight: 700;
+        color: #fef3c7;
     }
 }
 
 .activity-item.decision-event.promote {
-    background: rgba(16, 185, 129, 0.06);
+    background: rgba(16, 185, 129, 0.12);
     border-left-color: #10b981;
+
+    .activity-message {
+        color: #d1fae5;
+    }
 }
 
 .activity-item.decision-event.rollback {
-    background: rgba(239, 68, 68, 0.06);
+    background: rgba(239, 68, 68, 0.12);
     border-left-color: #ef4444;
+
+    .activity-message {
+        color: #fee2e2;
+    }
 }
 
 .activity-item.error-event {
@@ -505,9 +516,17 @@ body {
 }
 
 .activity-item.remediation-event {
-    background: rgba(236, 72, 153, 0.04);
-    border-left: 3px solid #ec4899;
-    padding-left: 13px;
+    background: rgba(236, 72, 153, 0.12);
+    border-left: 4px solid #ec4899;
+    padding-left: 12px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+
+    .activity-message {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #fce7f3;
+    }
 }
 
 .activity-item.insight-event {
@@ -547,131 +566,6 @@ body {
     flex-direction: column;
     gap: 10px;
     min-height: 0;
-}
-
-// AI Decision card
-.decision-card {
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid rgba(124, 58, 237, 0.3);
-    padding: 16px 18px;
-    position: relative;
-    flex-shrink: 0;
-}
-
-.decision-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.6), transparent);
-}
-
-.decision-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-}
-
-.decision-icon {
-    width: 40px;
-    height: 40px;
-    background: rgba(124, 58, 237, 0.15);
-    border: 1px solid rgba(124, 58, 237, 0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.3rem;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.decision-icon.analyzing {
-    animation: spin 2s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.decision-title {
-    font-size: 1rem;
-    font-weight: 700;
-}
-
-.decision-subtitle {
-    font-size: 0.8rem;
-    color: #94a3b8;
-}
-
-.decision-body {
-    background: rgba(0, 0, 0, 0.2);
-    padding: 14px;
-    border-left: 3px solid rgba(124, 58, 237, 0.4);
-}
-
-.decision-body.success {
-    border-left-color: #10b981;
-    background: rgba(16, 185, 129, 0.08);
-}
-
-.decision-body.failed {
-    border-left-color: #ef4444;
-    background: rgba(239, 68, 68, 0.08);
-}
-
-.decision-verdict {
-    font-weight: 700;
-    font-size: 1.05rem;
-    margin-bottom: 6px;
-}
-
-.decision-message {
-    font-size: 0.85rem;
-    color: #cbd5e1;
-    line-height: 1.5;
-}
-
-// Error log
-.error-log-container {
-    margin-top: 10px;
-    border: 1px solid rgba(239, 68, 68, 0.2);
-}
-
-.error-log-header {
-    padding: 8px 12px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: 600;
-    font-size: 0.8rem;
-    background: rgba(239, 68, 68, 0.1);
-    &:hover { background: rgba(239, 68, 68, 0.15); }
-}
-
-.error-log-toggle {
-    transition: transform 0.3s ease;
-    &.expanded { transform: rotate(180deg); }
-}
-
-.error-log-content {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
-    &.expanded { max-height: 300px; overflow-y: auto; }
-}
-
-.error-log-text {
-    padding: 12px;
-    font-family: 'Courier New', monospace;
-    font-size: 0.8rem;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-break: break-word;
-    color: #fca5a5;
 }
 
 // Graph card

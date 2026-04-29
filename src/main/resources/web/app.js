@@ -155,16 +155,35 @@ function updateSuccessRateGraph(currentSuccessRate) {
 
     if (successRateHistory.length < 2) return;
 
+    // Auto-scale Y-axis to make variations visible
+    const dataMin = Math.min(...successRateHistory);
+    const dataMax = Math.max(...successRateHistory);
+    const dataRange = Math.max(dataMax - dataMin, 5);
+    const yMin = Math.max(0, Math.floor(dataMin - dataRange * 0.3));
+    const yMax = Math.min(100, Math.ceil(dataMax + dataRange * 0.2));
+    const yRange = yMax - yMin;
+
+    function rateToY(rate) {
+        return height - ((rate - yMin) / yRange) * height;
+    }
+
+    // Grid lines with labels
     ctx.strokeStyle = 'rgba(100, 116, 139, 0.2)';
+    ctx.fillStyle = 'rgba(100, 116, 139, 0.5)';
+    ctx.font = '10px monospace';
     ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-        const y = (height / 4) * i;
+    const gridStep = yRange <= 10 ? 2 : yRange <= 25 ? 5 : 10;
+    const gridStart = Math.ceil(yMin / gridStep) * gridStep;
+    for (let v = gridStart; v <= yMax; v += gridStep) {
+        const y = rateToY(v);
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(width, y);
         ctx.stroke();
+        ctx.fillText(v + '%', 4, y - 3);
     }
 
+    // Data line
     ctx.strokeStyle = currentSuccessRate >= 95 ? '#10b981' : currentSuccessRate >= 90 ? '#f59e0b' : '#ef4444';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -172,21 +191,24 @@ function updateSuccessRateGraph(currentSuccessRate) {
     const pointSpacing = width / (maxHistoryPoints - 1);
     successRateHistory.forEach((rate, index) => {
         const x = index * pointSpacing;
-        const y = height - (rate / 100) * height;
+        const y = rateToY(rate);
         if (index === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
     });
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
-    const thresholdY = height - (95 / 100) * height;
-    ctx.beginPath();
-    ctx.moveTo(0, thresholdY);
-    ctx.lineTo(width, thresholdY);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    // 95% threshold line (only if in visible range)
+    if (95 >= yMin && 95 <= yMax) {
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        const thresholdY = rateToY(95);
+        ctx.beginPath();
+        ctx.moveTo(0, thresholdY);
+        ctx.lineTo(width, thresholdY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
 }
 
 let previousStableRequests = 0;
@@ -200,6 +222,7 @@ function animateRequest(type) {
     dot.className = 'request-dot ' + type;
     dot.style.left = Math.random() * (container.offsetWidth - 14) + 'px';
     dot.style.bottom = '0px';
+    dot.style.setProperty('--travel-distance', '-' + container.offsetHeight + 'px');
     container.appendChild(dot);
 
     setTimeout(() => {

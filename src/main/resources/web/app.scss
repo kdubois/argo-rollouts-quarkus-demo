@@ -655,7 +655,7 @@ body {
 @keyframes floatUp {
     0% { transform: translateY(0) scale(1); opacity: 1; }
     70% { opacity: 0.8; }
-    100% { transform: translateY(-150px) scale(0.4); opacity: 0; }
+    100% { transform: translateY(var(--travel-distance, -150px)) scale(0.4); opacity: 0; }
 }
 
 .request-flow-legend {

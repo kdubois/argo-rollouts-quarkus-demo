@@ -123,9 +123,11 @@ public class MetricsResource {
         // Intentionally dereference null to cause NPE (only for scenario 2)
         if (enableNullPointerBug) {
             try {
+if (nullString != null) {
                 String nullString = null;
                 length = nullString.length();  // NullPointerException here!
             } catch (NullPointerException e) {
+}
                 // Log the full stack trace so the AI agent can identify the file and line
                 LOG.error("NullPointerException in getStatus method", e);
                 throw e;  // Re-throw to maintain the error behavior

@@ -7,43 +7,142 @@
     {#bundle /}
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 AI-Powered Progressive Delivery</h1>
-            <p>Real-time Canary Rollout with Intelligent Analysis</p>
-            <div class="version-badge">Version: {version}</div>
-        </div>
+    <div class="dashboard">
+        <!-- Top Bar: Header + Status -->
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <h1 class="logo">AI-Powered Progressive Delivery</h1>
+                <div class="version-badge">v{version}</div>
+            </div>
+            <div class="top-bar-right">
+                <div id="rolloutStatusBadge">
+                    <div class="status-badge progressing"><div class="status-dot"></div>Loading</div>
+                </div>
+                <div class="phase-message" id="rolloutMessage">Connecting...</div>
+            </div>
+        </header>
 
         <div id="errorContainer"></div>
 
-        <div class="main-grid">
-            <!-- Left Column -->
-            <div class="left-column">
-                <!-- Live Request Flow -->
-                {#include components/live-request-flow.html /}
+        <!-- Status Strip: Traffic + Rollout Stages -->
+        <div class="status-strip">
+            <div class="strip-section traffic-strip">
+                <div class="strip-label">Traffic Split</div>
+                <div class="traffic-bar">
+                    <div class="traffic-segment traffic-stable" id="stableSegment" style="width: 100%">
+                        <span id="stablePercentage">100%</span>
+                    </div>
+                    <div class="traffic-segment traffic-canary" id="canarySegment" style="width: 0%">
+                        <span id="canaryPercentage">0%</span>
+                    </div>
+                </div>
+                <div class="traffic-labels">
+                    <span class="traffic-label stable">Stable</span>
+                    <span class="traffic-label canary">Canary</span>
+                </div>
+            </div>
+            <div class="strip-divider"></div>
+            <div class="strip-section stages-strip">
+                <div class="strip-label">Rollout Stages</div>
+                <div class="stages-row">
+                    <div class="stage-pip" data-weight="0" data-step="0">
+                        <div class="pip-marker">0%</div>
+                        <div class="pip-label">Start</div>
+                    </div>
+                    <div class="stage-connector"></div>
+                    <div class="stage-pip" data-weight="10" data-step="0,1">
+                        <div class="pip-marker">10%</div>
+                        <div class="pip-label">Initial</div>
+                    </div>
+                    <div class="stage-connector"></div>
+                    <div class="stage-pip" data-weight="10" data-step="2,3">
+                        <div class="pip-marker">10%</div>
+                        <div class="pip-label">Analysis</div>
+                    </div>
+                    <div class="stage-connector"></div>
+                    <div class="stage-pip" data-weight="60" data-step="4,5">
+                        <div class="pip-marker">60%</div>
+                        <div class="pip-label">Expand</div>
+                    </div>
+                    <div class="stage-connector"></div>
+                    <div class="stage-pip" data-weight="100" data-step="6">
+                        <div class="pip-marker">100%</div>
+                        <div class="pip-label">Complete</div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                <!-- AI Monitoring Panel -->
-                {#include components/ai-monitoring.html /}
-
-                <!-- Agent Activity Feed -->
-                {#include components/agent-activity.html /}
+        <!-- Main Content: Activity Feed + Right Panel -->
+        <div class="main-content">
+            <!-- Left: Agent Activity Feed (primary focus) -->
+            <div class="activity-panel">
+                <div class="panel-header">
+                    <div class="panel-title-group">
+                        <span class="panel-icon">&#x1F916;</span>
+                        <h2 class="panel-title">Agent Activity</h2>
+                    </div>
+                    <div class="activity-status" id="activityStatus">
+                        <div class="activity-dot"></div>
+                        <span>Live</span>
+                    </div>
+                </div>
+                <div class="activity-feed" id="activityFeed">
+                    <div class="activity-empty" id="activityEmpty">
+                        Waiting for agent activity...
+                    </div>
+                </div>
             </div>
 
-            <!-- Right Column -->
-            <div class="right-column">
-                <!-- Traffic Distribution -->
-                {#include components/traffic-distribution.html /}
+            <!-- Right: AI Decision + Metrics + Requests -->
+            <div class="info-panel">
+                <!-- AI Decision Card -->
+                <div class="decision-card" id="aiDecisionCard">
+                    <div class="decision-header">
+                        <div class="decision-icon" id="aiIcon">&#x1F916;</div>
+                        <div class="decision-status">
+                            <div class="decision-title" id="aiStatusTitle">AI Monitoring</div>
+                            <div class="decision-subtitle" id="aiStatusSubtitle">Waiting for analysis</div>
+                        </div>
+                    </div>
+                    <div class="decision-body" id="aiDecision">
+                        <div class="decision-verdict" id="aiDecisionTitle">Waiting...</div>
+                        <div class="decision-message" id="aiDecisionMessage">
+                            The AI agent will analyze metrics once the rollout progresses.
+                        </div>
+                        <div class="error-log-container" id="errorLogContainer" style="display: none;">
+                            <div class="error-log-header" onclick="toggleErrorLog()">
+                                <span>Error Details</span>
+                                <span class="error-log-toggle" id="errorLogToggle">&#x25BC;</span>
+                            </div>
+                            <div class="error-log-content" id="errorLogContent">
+                                <div class="error-log-text" id="errorLogText"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                <!-- Rollout Progress (Vertical) -->
-                {#include components/rollout-progress.html /}
+                <!-- Success Rate Graph -->
+                <div class="graph-card">
+                    <div class="graph-title">Success Rate Trend <span class="graph-legend">--- 95% threshold</span></div>
+                    <canvas id="successRateGraph" width="400" height="100"></canvas>
+                </div>
 
-                <!-- Deployment Status -->
-                {#include components/deployment-status.html /}
+                <!-- Live Request Flow -->
+                <div class="requests-card">
+                    <div class="requests-title">Live Requests</div>
+                    <div class="request-visualization" id="requestVisualization"></div>
+                    <div class="request-flow-legend">
+                        <span class="req-legend"><span class="req-dot stable"></span>Stable</span>
+                        <span class="req-legend"><span class="req-dot canary-success"></span>Canary OK</span>
+                        <span class="req-legend"><span class="req-dot canary-error"></span>Canary Err</span>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="footer">
-            <p>Powered by Quarkus • Argo Rollouts • AI Analysis Plugin</p>
+            Powered by Quarkus &bull; Argo Rollouts &bull; AI Analysis
         </div>
     </div>
 </body>

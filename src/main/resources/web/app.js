@@ -382,13 +382,86 @@ function clearError() {
     document.getElementById('errorContainer').innerHTML = '';
 }
 
+// === Agent Activity Feed ===
+let lastEventId = 0;
+
+function updateActivityFeed() {
+    const url = lastEventId > 0
+        ? '/api/agent/events?since=' + lastEventId
+        : '/api/agent/events';
+
+    fetch(url)
+        .then(r => r.json())
+        .then(events => {
+            if (events.length === 0) return;
+
+            const feed = document.getElementById('activityFeed');
+            const empty = document.getElementById('activityEmpty');
+            if (empty) empty.style.display = 'none';
+
+            events.forEach(event => {
+                const item = document.createElement('div');
+                item.className = 'activity-item';
+
+                const typeClass = event.type.toLowerCase().replace(/_/g, '-');
+                const time = new Date(event.timestamp).toLocaleTimeString();
+
+                let html = '<div class="activity-item-header">' +
+                    '<span class="activity-type-badge ' + typeClass + '">' +
+                    formatEventType(event.type) + '</span>' +
+                    '<span class="activity-timestamp">' + time + '</span>' +
+                    '</div>' +
+                    '<div class="activity-message">' + escapeHtml(event.message) + '</div>';
+
+                if (event.details) {
+                    html += '<div class="activity-details">' +
+                        escapeHtml(event.details) + '</div>';
+                }
+
+                item.innerHTML = html;
+                feed.appendChild(item);
+
+                lastEventId = Math.max(lastEventId, event.id);
+            });
+
+            feed.scrollTop = feed.scrollHeight;
+        })
+        .catch(err => {
+            console.debug('Activity feed unavailable:', err.message);
+        });
+}
+
+function formatEventType(type) {
+    const labels = {
+        'ANALYSIS_START': 'Start',
+        'TOOL_CALL': 'Tool',
+        'TOOL_RESULT': 'Result',
+        'DECISION': 'Decision',
+        'REMEDIATION': 'Fix',
+        'ERROR': 'Error'
+    };
+    return labels[type] || type;
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;');
+}
+
 // Initialize dashboard when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         updateDashboard();
         setInterval(updateDashboard, 2000);
+        updateActivityFeed();
+        setInterval(updateActivityFeed, 3000);
     });
 } else {
     updateDashboard();
     setInterval(updateDashboard, 2000);
+    updateActivityFeed();
+    setInterval(updateActivityFeed, 3000);
 }

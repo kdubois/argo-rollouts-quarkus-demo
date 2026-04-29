@@ -11,3 +11,5 @@
 * it always says "waiting for analysis to start" on the dashboard, even when an analysis is underway. 
 
 * integrate bob shell to analyze the code from issues and create PRs or let someone review them.
+
+* to specify a model in declarative mode: https://github.com/langchain4j/langchain4j/blob/760610c131495f551ef360ca7a814dd7cef13e57/langchain4j-agentic/src/test/java/dev/langchain4j/agentic/DeclarativeAgentIT.java#L863

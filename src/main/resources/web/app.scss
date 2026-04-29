@@ -981,3 +981,148 @@ body::before {
         flex: 1;
     }
 }
+
+// Agent Activity Feed
+.activity-feed-card {
+    max-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.activity-feed-card .card-header {
+    flex-shrink: 0;
+}
+
+.activity-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #10b981;
+    font-weight: 600;
+}
+
+.activity-dot {
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    animation: pulseDot 2s infinite;
+}
+
+@keyframes pulseDot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.activity-feed {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding-right: 4px;
+}
+
+.activity-feed::-webkit-scrollbar {
+    width: 4px;
+}
+
+.activity-feed::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.activity-feed::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.3);
+}
+
+.activity-empty {
+    color: #64748b;
+    text-align: center;
+    padding: 40px 20px;
+    font-size: 0.9rem;
+}
+
+.activity-item {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+    animation: activityFadeIn 0.3s ease-out;
+}
+
+@keyframes activityFadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.activity-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.activity-type-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.activity-type-badge.analysis-start {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.activity-type-badge.tool-call {
+    background: rgba(139, 92, 246, 0.2);
+    color: #c084fc;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.activity-type-badge.tool-result {
+    background: rgba(16, 185, 129, 0.15);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.activity-type-badge.decision {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.activity-type-badge.remediation {
+    background: rgba(236, 72, 153, 0.2);
+    color: #f9a8d4;
+    border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.activity-type-badge.error {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.activity-timestamp {
+    font-size: 0.7rem;
+    color: #64748b;
+    font-family: 'Courier New', monospace;
+}
+
+.activity-message {
+    font-size: 0.85rem;
+    color: #e2e8f0;
+    line-height: 1.4;
+}
+
+.activity-details {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 2px;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

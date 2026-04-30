@@ -292,6 +292,8 @@ function appendActivityItem(event) {
         item.classList.add('score-event');
     } else if (event.type === 'RETRY') {
         item.classList.add('retry-event');
+    } else if (event.type === 'ANALYSIS_SUMMARY') {
+        item.classList.add('summary-event');
     }
 
     let messageHtml = escapeHtml(event.message);
@@ -403,7 +405,8 @@ function formatEventType(type) {
         'AGENT_COMPLETE': 'Done',
         'ANALYSIS_INSIGHT': 'Insight',
         'CONFIDENCE_SCORE': 'Score',
-        'RETRY': 'Retry'
+        'RETRY': 'Retry',
+        'ANALYSIS_SUMMARY': 'Summary'
     };
     return labels[type] || type;
 }

@@ -14,28 +14,33 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.resteasy.reactive.RestStreamElementType;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Path("/api/agent")
 public class AgentActivityResource {
+
+    private static final int MAX_CACHED_EVENTS = 100;
 
     @Inject
     @RestClient
     AgentEventsClient agentEventsClient;
 
     private final BroadcastProcessor<ActivityEvent> processor = BroadcastProcessor.create();
-    private long lastEventId = 0;
+    private final List<ActivityEvent> cachedEvents = new ArrayList<>();
+    private long lastPolledId = 0;
 
     @GET
     @Path("/events")
     @Produces(MediaType.APPLICATION_JSON)
-    public List<ActivityEvent> getEvents(@QueryParam("since") Long sinceId) {
-        try {
-            return agentEventsClient.getEvents(sinceId);
-        } catch (Exception e) {
-            Log.debug("Could not reach kubernetes-agent for events: " + e.getMessage());
-            return List.of();
+    public synchronized List<ActivityEvent> getEvents(@QueryParam("since") Long sinceId) {
+        if (sinceId != null && sinceId > 0) {
+            return cachedEvents.stream()
+                .filter(e -> e.id() > sinceId)
+                .toList();
         }
+        return Collections.unmodifiableList(new ArrayList<>(cachedEvents));
     }
 
     @GET
@@ -47,15 +52,19 @@ public class AgentActivityResource {
     }
 
     @Scheduled(every = "0.5s")
-    void pollAndBroadcast() {
+    synchronized void pollAndBroadcast() {
         try {
-            Long sinceId = lastEventId > 0 ? lastEventId : null;
+            Long sinceId = lastPolledId > 0 ? lastPolledId : null;
             List<ActivityEvent> events = agentEventsClient.getEvents(sinceId);
             for (ActivityEvent event : events) {
+                cachedEvents.add(event);
                 processor.onNext(event);
-                if (event.id() > lastEventId) {
-                    lastEventId = event.id();
+                if (event.id() > lastPolledId) {
+                    lastPolledId = event.id();
                 }
+            }
+            while (cachedEvents.size() > MAX_CACHED_EVENTS) {
+                cachedEvents.remove(0);
             }
         } catch (Exception e) {
             Log.trace("Could not reach kubernetes-agent for SSE bridge: " + e.getMessage());

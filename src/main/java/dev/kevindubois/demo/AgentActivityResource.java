@@ -30,12 +30,18 @@ public class AgentActivityResource {
     private final BroadcastProcessor<ActivityEvent> processor = BroadcastProcessor.create();
     private final List<ActivityEvent> cachedEvents = new ArrayList<>();
     private long lastPolledId = 0;
+    private int consecutiveEmptyPolls = 0;
 
     @GET
     @Path("/events")
     @Produces(MediaType.APPLICATION_JSON)
     public synchronized List<ActivityEvent> getEvents(@QueryParam("since") Long sinceId) {
         if (sinceId != null && sinceId > 0) {
+            long maxCachedId = cachedEvents.isEmpty() ? 0
+                    : cachedEvents.get(cachedEvents.size() - 1).id();
+            if (sinceId > maxCachedId && !cachedEvents.isEmpty()) {
+                return Collections.unmodifiableList(new ArrayList<>(cachedEvents));
+            }
             return cachedEvents.stream()
                 .filter(e -> e.id() > sinceId)
                 .toList();
@@ -56,6 +62,28 @@ public class AgentActivityResource {
         try {
             Long sinceId = lastPolledId > 0 ? lastPolledId : null;
             List<ActivityEvent> events = agentEventsClient.getEvents(sinceId);
+
+            if (events.isEmpty() && lastPolledId > 0) {
+                consecutiveEmptyPolls++;
+                if (consecutiveEmptyPolls >= 20) {
+                    consecutiveEmptyPolls = 0;
+                    List<ActivityEvent> freshEvents = agentEventsClient.getEvents(null);
+                    if (!freshEvents.isEmpty()) {
+                        long freshMaxId = freshEvents.stream()
+                                .mapToLong(ActivityEvent::id).max().orElse(0);
+                        if (freshMaxId < lastPolledId) {
+                            Log.info("Agent restart detected (new max ID: " + freshMaxId
+                                    + ", was tracking: " + lastPolledId + "), resetting");
+                            cachedEvents.clear();
+                            lastPolledId = 0;
+                            events = freshEvents;
+                        }
+                    }
+                }
+            } else {
+                consecutiveEmptyPolls = 0;
+            }
+
             for (ActivityEvent event : events) {
                 cachedEvents.add(event);
                 processor.onNext(event);

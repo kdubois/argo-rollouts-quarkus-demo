@@ -268,6 +268,14 @@ let lastEventId = 0;
 let activityPollInterval = null;
 
 function appendActivityItem(event) {
+    if (event.id <= lastEventId && event.id > 0) {
+        if (event.id < lastEventId / 2) {
+            resetActivityFeed();
+        } else {
+            return;
+        }
+    }
+
     const feed = document.getElementById('activityFeed');
     const empty = document.getElementById('activityEmpty');
     if (empty) empty.style.display = 'none';
@@ -326,6 +334,12 @@ function appendActivityItem(event) {
 
     lastEventId = Math.max(lastEventId, event.id);
     feed.scrollTop = feed.scrollHeight;
+}
+
+function resetActivityFeed() {
+    const feed = document.getElementById('activityFeed');
+    feed.innerHTML = '<div class="activity-empty" id="activityEmpty" style="display:none"></div>';
+    lastEventId = 0;
 }
 
 function setActivityStatus(connected) {

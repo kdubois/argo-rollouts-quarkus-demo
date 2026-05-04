@@ -168,9 +168,9 @@ function updateSuccessRateGraph(currentSuccessRate) {
     }
 
     // Grid lines with labels
-    ctx.strokeStyle = 'rgba(100, 116, 139, 0.2)';
-    ctx.fillStyle = 'rgba(100, 116, 139, 0.5)';
-    ctx.font = '10px monospace';
+    ctx.strokeStyle = 'rgba(100, 116, 139, 0.25)';
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.7)';
+    ctx.font = '12px monospace';
     ctx.lineWidth = 1;
     const gridStep = yRange <= 10 ? 2 : yRange <= 25 ? 5 : 10;
     const gridStart = Math.ceil(yMin / gridStep) * gridStep;
@@ -184,8 +184,8 @@ function updateSuccessRateGraph(currentSuccessRate) {
     }
 
     // Data line
-    ctx.strokeStyle = currentSuccessRate >= 95 ? '#10b981' : currentSuccessRate >= 90 ? '#f59e0b' : '#ef4444';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = currentSuccessRate >= 95 ? '#34d399' : currentSuccessRate >= 90 ? '#fbbf24' : '#f87171';
+    ctx.lineWidth = 3;
     ctx.beginPath();
 
     const pointSpacing = width / (maxHistoryPoints - 1);
@@ -199,8 +199,8 @@ function updateSuccessRateGraph(currentSuccessRate) {
 
     // 95% threshold line (only if in visible range)
     if (95 >= yMin && 95 <= yMax) {
-        ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+        ctx.lineWidth = 2;
         ctx.setLineDash([4, 4]);
         const thresholdY = rateToY(95);
         ctx.beginPath();

@@ -18,6 +18,43 @@ This document explains the simplified container-based approach for demonstrating
 
 ---
 
+## How Bug Scenarios Work
+
+**Important**: Bug scenarios are **baked into the container images at build time**, not toggled via runtime environment variables.
+
+### Build Process
+
+The GitHub Actions workflow (`.github/workflows/build-scenario-images.yml`) automatically builds three distinct images on every push to main:
+
+1. **v1.stable**: Built with `enable.null.pointer.bug=false` and `enable.memory.leak=false`
+2. **v2.nullpointer**: Built with `enable.null.pointer.bug=true` and `enable.memory.leak=false`
+3. **v3.memoryleak**: Built with `enable.null.pointer.bug=false` and `enable.memory.leak=true`
+
+The feature flags are set in `application.properties` **before** the Maven build, so they are compiled into the JAR and cannot be changed at runtime.
+
+### Switching Scenarios
+
+To switch between scenarios, simply change the container image tag in your rollout:
+
+```bash
+# Deploy stable version
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable -n quarkus-demo
+
+# Deploy NullPointerException bug
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer -n quarkus-demo
+
+# Deploy memory leak
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v3.memoryleak -n quarkus-demo
+```
+
+This approach ensures:
+- ✅ Consistent behavior across deployments
+- ✅ No runtime configuration needed
+- ✅ Easy scenario switching via image tags
+- ✅ Automated builds via GitHub Actions
+
+---
+
 ## Overview
 
 The container-based approach simplifies progressive delivery demonstrations by:
@@ -107,7 +144,7 @@ The container-based approach simplifies progressive delivery demonstrations by:
 
 ### Scenario 1: Stable Deployment (Happy Path)
 
-**Image**: `quay.io/kevindubois/argo-rollouts-quarkus-demo:v1.stable`
+**Image**: `ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable`
 
 **Behavior**:
 - ✅ 99% success rate
@@ -133,7 +170,7 @@ The container-based approach simplifies progressive delivery demonstrations by:
 
 ### Scenario 2: NullPointerException Bug (Fixable)
 
-**Image**: `quay.io/kevindubois/argo-rollouts-quarkus-demo:v2.nullpointer`
+**Image**: `ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer`
 
 **Behavior**:
 - ❌ 20% of requests fail with NullPointerException
@@ -171,7 +208,7 @@ String userName = user.getName(); // NPE when user is null!
 
 ### Scenario 3: Memory Leak (Non-Fixable)
 
-**Image**: `quay.io/kevindubois/argo-rollouts-quarkus-demo:v3.memoryleak`
+**Image**: `ghcr.io/kdubois/argo-rollouts-quarkus-demo:v3.memoryleak`
 
 **Behavior**:
 - ⚠️ Gradual performance degradation
@@ -230,16 +267,22 @@ ERROR CRITICAL: Application struggling. Response times 6x baseline. Heap usage: 
 **Scenario 1 (Stable)**:
 ```bash
 kubectl apply -k progressive-delivery/workloads/quarkus-rollouts-demo/overlays/scenario-1-stable/
+# Or directly update the image:
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable -n quarkus-demo
 ```
 
 **Scenario 2 (NullPointerException)**:
 ```bash
 kubectl apply -k progressive-delivery/workloads/quarkus-rollouts-demo/overlays/scenario-2-null-pointer/
+# Or directly update the image:
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer -n quarkus-demo
 ```
 
 **Scenario 3 (Memory Leak)**:
 ```bash
 kubectl apply -k progressive-delivery/workloads/quarkus-rollouts-demo/overlays/scenario-3-memory-leak/
+# Or directly update the image:
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v3.memoryleak -n quarkus-demo
 ```
 
 ### Watch the Rollout
@@ -293,7 +336,7 @@ spec:
     spec:
       containers:
       - name: quarkus-demo
-        image: quay.io/kevindubois/argo-rollouts-quarkus-demo:v2.nullpointer  # Changed from v1.stable
+        image: ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer  # Changed from v1.stable
 ```
 
 ### 2. Commit and Push
@@ -485,32 +528,41 @@ To build images locally:
 ```bash
 cd argo-rollouts-quarkus-demo
 
+# NOTE: Images are automatically built by GitHub Actions on push to main
+# See .github/workflows/build-scenario-images.yml for the automated build process
+
+# Manual build (if needed):
 # Build Scenario 1 (Stable)
+sed -i 's/enable.null.pointer.bug=.*/enable.null.pointer.bug=false/' src/main/resources/application.properties
+sed -i 's/enable.memory.leak=.*/enable.memory.leak=false/' src/main/resources/application.properties
 ./mvnw clean package -DskipTests
 docker build -f src/main/docker/Dockerfile.jvm \
-  -t quay.io/kevindubois/argo-rollouts-quarkus-demo:v1.stable .
+  -t ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable .
 
 # Build Scenario 2 (NullPointerException)
-# First, edit src/main/resources/application.properties:
-# enable.null.pointer.bug=true
+sed -i 's/enable.null.pointer.bug=.*/enable.null.pointer.bug=true/' src/main/resources/application.properties
+sed -i 's/enable.memory.leak=.*/enable.memory.leak=false/' src/main/resources/application.properties
 ./mvnw clean package -DskipTests
 docker build -f src/main/docker/Dockerfile.jvm \
-  -t quay.io/kevindubois/argo-rollouts-quarkus-demo:v2.nullpointer .
+  -t ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer .
 
 # Build Scenario 3 (Memory Leak)
-# Edit src/main/resources/application.properties:
-# enable.memory.leak=true
+sed -i 's/enable.null.pointer.bug=.*/enable.null.pointer.bug=false/' src/main/resources/application.properties
+sed -i 's/enable.memory.leak=.*/enable.memory.leak=true/' src/main/resources/application.properties
 ./mvnw clean package -DskipTests
 docker build -f src/main/docker/Dockerfile.jvm \
-  -t quay.io/kevindubois/argo-rollouts-quarkus-demo:v3.memoryleak .
+  -t ghcr.io/kdubois/argo-rollouts-quarkus-demo:v3.memoryleak .
 ```
 
 ### Image Registry
 
-Images are hosted on Quay.io:
-- Repository: `quay.io/kevindubois/argo-rollouts-quarkus-demo`
+Images are hosted on GitHub Container Registry (ghcr.io):
+- Repository: `ghcr.io/kdubois/argo-rollouts-quarkus-demo`
 - Public visibility
 - Tags: `v1.stable`, `v2.nullpointer`, `v3.memoryleak`
+- Automated builds via GitHub Actions (see `.github/workflows/build-scenario-images.yml`)
+
+**Important**: Bug scenarios are **baked into the container images** at build time by setting the feature flags in `application.properties` before building. The GitHub Actions workflow automatically builds all three scenario images on every push to main.
 
 ---
 

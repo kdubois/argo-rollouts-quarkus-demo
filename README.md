@@ -24,15 +24,19 @@ The demo application is part of a larger system that brings AI-powered analysis 
 │  │                  │  - Health endpoints (/q/health)           │
 │  │  Stable: 3 pods  │  - Metrics endpoint (/q/metrics)          │
 │  │  Canary: 1 pod   │  - Dashboard UI (/)                       │
-│  └────────┬─────────┘  - Configurable failure modes             │
+│  └────────┬─────────┘  - Built-in load generator (50 req/sec)   │
+│           │            - Pre-built scenario images:              │
+│           │              • v1.stable (99% success)               │
+│           │              • v2.nullpointer (20% NPE failures)     │
+│           │              • v3.memoryleak (gradual degradation)   │
 │           │                                                      │
 │           │ Managed by                                           │
 │           ▼                                                      │
 │  ┌──────────────────┐         ┌────────────────────┐           │
-│  │  Argo Rollouts   │────────▶│  Istio Gateway     │           │
-│  │                  │         │  (Traffic Routing) │           │
+│  │  Argo Rollouts   │────────▶│  Gateway API       │           │
+│  │                  │         │  (HTTPRoute)       │           │
 │  │  - Canary steps  │         │                    │           │
-│  │  - Analysis runs │         │  20% → 50% → 100%  │           │
+│  │  - Analysis runs │         │  10% → 60% → 100%  │           │
 │  └────────┬─────────┘         └────────────────────┘           │
 │           │                                                      │
 │           │ Triggers analysis                                    │
@@ -54,13 +58,14 @@ The demo application is part of a larger system that brings AI-powered analysis 
 │           │                                                      │
 └───────────┼──────────────────────────────────────────────────────┘
             │
-            │ Creates PRs on failure
+            │ Creates PRs/Issues on failure
             ▼
    ┌────────────────────┐
-   │      GitHub        │  Automated pull requests with:
+   │      GitHub        │  Automated remediation:
    │                    │  - Root cause analysis
-   │  Pull Requests     │  - Proposed code fixes
-   └────────────────────┘  - Testing recommendations
+   │   Pull Requests    │  - Proposed code fixes (fixable bugs)
+   │   & Issues         │  - Investigation steps (complex issues)
+   └────────────────────┘
 ```
 
 ## Key Features
@@ -77,13 +82,15 @@ Unlike traditional metric-based analysis that relies on static thresholds, the A
 
 When issues are detected, the Kubernetes Agent automatically creates GitHub pull requests with detailed root cause analysis and proposed fixes, enabling rapid response to deployment problems.
 
-### Configurable Scenarios
+### Pre-Built Scenario Images
 
-The application supports multiple deployment scenarios for demonstration purposes:
+The application provides three pre-built container images with different behaviors for demonstration purposes:
 
-- **Happy Path**: Successful deployment with healthy metrics
-- **Failure Mode**: Simulated errors to demonstrate automatic rollback
-- **Custom Scenarios**: Configurable via environment variables
+- **v1.stable** (`ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable`): Healthy application with 99% success rate
+- **v2.nullpointer** (`ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer`): NullPointerException bug affecting 20% of requests
+- **v3.memoryleak** (`ghcr.io/kdubois/argo-rollouts-quarkus-demo:v3.memoryleak`): Memory leak causing gradual performance degradation
+
+**Note**: Bug scenarios are baked into the images at build time via GitHub Actions. Switch scenarios by changing the image tag in your rollout. See [SCENARIOS.md](SCENARIOS.md) for detailed information.
 
 ## Technology Stack
 
@@ -98,15 +105,14 @@ The application supports multiple deployment scenarios for demonstration purpose
 
 The project uses GitHub Actions for automated builds and deployments:
 
-- **Automated Builds**: Every push to `main` triggers a build and pushes container images to GitHub Container Registry (GHCR)
+- **Automated Scenario Builds**: Every push to `main` triggers builds of all three scenario images (see `.github/workflows/build-scenario-images.yml`)
 - **Pull Request Validation**: PRs are built and tested automatically
 - **Container Images**: Available at `ghcr.io/kdubois/argo-rollouts-quarkus-demo`
 - **Dependency Management**: Dependabot automatically creates PRs for dependency updates
 
 Container images are tagged with:
-- `latest` for the main branch
-- Version tags for releases (e.g., `v1.0.0`)
-- SHA-based tags for all builds
+- `v1.stable`, `v2.nullpointer`, `v3.memoryleak` - Scenario-specific images
+- `stable-latest`, `null-pointer-bug-latest`, `memory-leak-latest` - Latest builds of each scenario
 
 ## Quick Start
 
@@ -153,15 +159,17 @@ java -jar target/quarkus-app/quarkus-run.jar
 Build a JVM-based Docker image:
 
 ```bash
-docker build -f src/main/docker/Dockerfile.jvm -t quay.io/kdubois/demo-app:latest .
+docker build -f src/main/docker/Dockerfile.jvm -t ghcr.io/kdubois/argo-rollouts-quarkus-demo:latest .
 ```
 
 Build a native executable Docker image (requires GraalVM):
 
 ```bash
 ./mvnw package -Dnative -Dquarkus.native.container-build=true
-docker build -f src/main/docker/Dockerfile.native -t quay.io/kdubois/demo-app:native .
+docker build -f src/main/docker/Dockerfile.native -t ghcr.io/kdubois/argo-rollouts-quarkus-demo:native .
 ```
+
+**Note**: For scenario-specific images, see the GitHub Actions workflow at `.github/workflows/build-scenario-images.yml` which automatically builds all three scenarios.
 
 ### Using the Makefile
 
@@ -207,45 +215,27 @@ kubectl argo rollouts get rollout demo-app -n demo-app --watch
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `APP_VERSION` | 1.0.0 | Application version displayed in responses |
-| `SCENARIO_MODE` | happy | Deployment scenario (happy, failure) |
+| `ROLLOUT_NAME` | quarkus-demo | Name of the Argo Rollout |
+| `ROLLOUT_NAMESPACE` | quarkus-demo | Namespace of the Argo Rollout |
+| `KUBERNETES_AGENT_URL` | http://kubernetes-agent... | URL of the Kubernetes Agent for A2A communication |
 | `QUARKUS_HTTP_PORT` | 8080 | HTTP port for the application |
 
-### Scenario Modes
+### Switching Between Scenarios
 
-**Happy Mode** (default):
-- Normal operation with healthy metrics
-- Success rate above 95%
-- Low error rates
-- Demonstrates successful canary promotion
-
-**Failure Mode**:
-- Simulates application errors
-- Elevated error rates (15%+)
-- Demonstrates automatic rollback
-- Triggers GitHub PR creation
-
-Configure the scenario mode via environment variable:
+Bug scenarios are **baked into the container images** at build time, not configured via environment variables. To switch scenarios, change the image tag:
 
 ```bash
-# In Kubernetes
-kubectl patch rollout demo-app -n demo-app --type merge -p '
-{
-  "spec": {
-    "template": {
-      "spec": {
-        "containers": [{
-          "name": "demo-app",
-          "env": [{
-            "name": "SCENARIO_MODE",
-            "value": "failure"
-          }]
-        }]
-      }
-    }
-  }
-}'
+# Deploy stable version (99% success rate)
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable -n quarkus-demo
+
+# Deploy NullPointerException bug (20% failure rate)
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer -n quarkus-demo
+
+# Deploy memory leak (gradual degradation)
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v3.memoryleak -n quarkus-demo
 ```
+
+See [SCENARIOS.md](SCENARIOS.md) for detailed information about each scenario.
 
 ## Demo Scenarios
 
@@ -254,12 +244,11 @@ kubectl patch rollout demo-app -n demo-app --type merge -p '
 Deploy a new version and watch the AI analyze and promote it:
 
 ```bash
-# Trigger a new rollout
-kubectl argo rollouts set image demo-app -n demo-app \
-  demo-app=quay.io/kdubois/demo-app:2.0.0
+# Trigger a new rollout with stable image
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable -n quarkus-demo
 
 # Watch the analysis
-kubectl argo rollouts get rollout demo-app -n demo-app --watch
+kubectl argo rollouts get rollout quarkus-demo -n quarkus-demo --watch
 ```
 
 The AI will analyze the canary at 20% and 50% traffic, then automatically promote to 100% if healthy.
@@ -269,26 +258,11 @@ The AI will analyze the canary at 20% and 50% traffic, then automatically promot
 Deploy a buggy version and watch the AI detect and rollback:
 
 ```bash
-# Deploy with failure mode
-kubectl patch rollout demo-app -n demo-app --type merge -p '
-{
-  "spec": {
-    "template": {
-      "spec": {
-        "containers": [{
-          "name": "demo-app",
-          "env": [
-            {"name": "SCENARIO_MODE", "value": "failure"},
-            {"name": "APP_VERSION", "value": "3.0.0"}
-          ]
-        }]
-      }
-    }
-  }
-}'
+# Deploy buggy version with NullPointerException
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer -n quarkus-demo
 
 # Watch the rollback
-kubectl argo rollouts get rollout demo-app -n demo-app --watch
+kubectl argo rollouts get rollout quarkus-demo -n quarkus-demo --watch
 ```
 
 The AI will detect elevated error rates and automatically rollback the deployment. A GitHub PR will be created with the fix.

@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: ai-analysis
+  namespace: quarkus-demo
+spec:
+  args:
+  - name: namespace
+  - name: canary-pod
+  - name: stable-pod-label
+    value: app=quarkus-demo,role=stable
+  - name: canary-pod-label
+    value: app=quarkus-demo,role=canary
+  metrics:
+  - name: ai-analysis
+    failureLimit: 0
+    count: 1
+    initialDelay: 5s
+    provider:
+      plugin:
+        argoproj-labs/metric-ai:
+          # Required: Agent URL (must be explicitly configured)
+          agentUrl: http://kubernetes-agent.argo-rollouts.svc.cluster.local:8080
+          # Required: Pod selectors for agent to fetch logs
+          stableLabel: role=stable
+          canaryLabel: role=canary
+          # Optional: Create GitHub issues on failures
+          githubUrl: https://github.com/kdubois/argo-rollouts-quarkus-demo
+          baseBranch: main
+          # Optional: Additional context for AI analysis
+          extraPrompt: "Focus on application errors, performance issues, and user-facing problems. Ignore color changes or cosmetic updates."

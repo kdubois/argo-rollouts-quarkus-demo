@@ -1,0 +1,108 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: quarkus-demo
+  namespace: quarkus-demo
+spec:
+  replicas: 3
+  revisionHistoryLimit: 2
+  minReadySeconds: 5
+  selector:
+    matchLabels:
+      app: quarkus-demo
+  template:
+    metadata:
+      labels:
+        app: quarkus-demo
+    spec:
+      serviceAccountName: quarkus-demo
+      containers:
+      - name: quarkus-demo
+        image: ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        env:
+        # Note: Bug scenarios are baked into the container images at build time
+        # Change the image tag above to switch scenarios:
+        # - v1.stable: Healthy application (99% success rate)
+        # - v2.nullpointer: NullPointerException bug (20% failure rate)
+        # - v3.memoryleak: Memory leak (gradual performance degradation)
+        - name: ROLLOUT_NAME
+          value: "quarkus-demo"
+        - name: ROLLOUT_NAMESPACE
+          value: "quarkus-demo"
+        - name: KUBERNETES_AGENT_URL
+          value: "http://kubernetes-agent.argo-rollouts.svc.cluster.local:8080"
+        livenessProbe:
+          httpGet:
+            path: /q/health/live
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /q/health/ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+  strategy:
+    canary:
+      # Add revision labels to stable and canary pods
+      stableMetadata:
+        labels:
+          role: stable
+      canaryMetadata:
+        labels:
+          role: canary
+      # Reference to stable and canary services
+      canaryService: quarkus-demo-canary
+      stableService: quarkus-demo-stable
+      # Traffic routing using Kubernetes Gateway API
+      trafficRouting:
+        plugins:
+          argoproj-labs/gatewayAPI:
+            httpRoute: quarkus-demo-route
+            namespace: quarkus-demo
+      # Analysis configuration
+      analysis:
+        startingStep: 2 # delay starting analysis run until we have collected enough metrics
+        args:
+        - name: service-name
+          value: quarkus-demo-canary.quarkus-demo.svc.cluster.local
+        - name: stable-pod-label
+          value: app=quarkus-demo,role=stable
+        - name: canary-pod-label
+          value: app=quarkus-demo,role=canary
+        - name: namespace
+          value: quarkus-demo
+        - name: canary-pod
+          valueFrom:
+            podTemplateHashValue: Latest
+        templates:
+        - templateName: ai-analysis
+      # Canary deployment steps
+      steps:
+      - setWeight: 20
+      - pause: { duration: 10s } # 10 seconds to start gathering metrics before starting analysis
+      - setWeight: 20
+      - pause: { duration: 30s } # 30 seconds to let the analysis do its job
+      - setWeight: 50
+      - pause: { duration: 30s } # continue analysis at 50% traffic
+      - setWeight: 80
+      - pause: { duration: 20s } # if everything is going well, continue rolling out
+      - setWeight: 100
+      - pause: { duration: 10s } # finish rolling out to everyone

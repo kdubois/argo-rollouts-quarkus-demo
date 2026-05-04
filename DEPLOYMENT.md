@@ -788,7 +788,7 @@ After successful deployment, you can:
 - **Argo Rollouts Documentation**: https://argo-rollouts.readthedocs.io/
 - **Istio Documentation**: https://istio.io/latest/docs/
 - **AI Plugin**: https://github.com/kdubois/rollouts-plugin-metric-ai
-- **Kubernetes Agent**: https://github.com/carlossg/kubernetes-agent
+- **Kubernetes Agent**: https://github.com/kdubois/kubernetes-aiops-agent
 - **Demo Script**: [DEMO_SCRIPT.md](DEMO_SCRIPT.md)
 
 ---

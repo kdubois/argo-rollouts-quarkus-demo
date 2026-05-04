@@ -157,25 +157,10 @@ demo-app-7d8f9c5b6d-ghi56     2/2     Running   0          5m
 ```bash
 # Update the image to trigger a new rollout
 kubectl argo rollouts set image demo-app -n demo-app \
-  demo-app=quay.io/kdubois/argo-rollouts-quarkus-demo:2.0.0
+  demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable
 
-# Or update the environment variable
-kubectl patch rollout demo-app -n demo-app --type merge -p '
-{
-  "spec": {
-    "template": {
-      "spec": {
-        "containers": [{
-          "name": "demo-app",
-          "env": [{
-            "name": "APP_VERSION",
-            "value": "2.0.0"
-          }]
-        }]
-      }
-    }
-  }
-}'
+# Or use kubectl set image directly
+kubectl set image rollout/demo-app demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable -n demo-app
 ```
 
 **Expected Output**:
@@ -198,8 +183,8 @@ Strategy:        Canary
   Step:          1/6
   SetWeight:     20
   ActualWeight:  20
-Images:          quay.io/kdubois/argo-rollouts-quarkus-demo:2.0.0 (canary)
-                 quay.io/kdubois/argo-rollouts-quarkus-demo:1.0.0 (stable)
+Images:          ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (canary)
+                 ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (stable)
 Replicas:
   Desired:       3
   Current:       4
@@ -275,7 +260,7 @@ Name:            demo-app
 Namespace:       demo-app
 Status:          ✔ Healthy
 Strategy:        Canary
-Images:          quay.io/kdubois/argo-rollouts-quarkus-demo:2.0.0 (stable)
+Images:          ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (stable)
 Replicas:
   Desired:       3
   Current:       3
@@ -316,29 +301,12 @@ NAME                                    KIND         STATUS        AGE  INFO
 "This version has a bug that causes increased error rates. The AI will detect this during canary analysis. It will automatically rollback the deployment and create a GitHub pull request with the fix."
 
 ```bash
-# Deploy version with SCENARIO_MODE=failure
-kubectl patch rollout demo-app -n demo-app --type merge -p '
-{
-  "spec": {
-    "template": {
-      "spec": {
-        "containers": [{
-          "name": "demo-app",
-          "env": [
-            {
-              "name": "APP_VERSION",
-              "value": "3.0.0"
-            },
-            {
-              "name": "SCENARIO_MODE",
-              "value": "failure"
-            }
-          ]
-        }]
-      }
-    }
-  }
-}'
+# Deploy buggy version with NullPointerException
+kubectl set image rollout/demo-app demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer -n demo-app
+
+# Or use kubectl argo rollouts
+kubectl argo rollouts set image demo-app -n demo-app \
+  demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer
 ```
 
 ### Step 2: Watch Canary Fail
@@ -356,8 +324,8 @@ Strategy:        Canary
   Step:          1/6
   SetWeight:     20
   ActualWeight:  20
-Images:          quay.io/kdubois/argo-rollouts-quarkus-demo:3.0.0 (canary)
-                 quay.io/kdubois/argo-rollouts-quarkus-demo:2.0.0 (stable)
+Images:          ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer (canary)
+                 ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (stable)
 
 NAME                                    KIND         STATUS        AGE  INFO
 ⟳ demo-app                              Rollout      ॥ Paused      15m  
@@ -429,7 +397,7 @@ Namespace:       demo-app
 Status:          ✖ Degraded
 Message:         RolloutAborted: Metric "ai-deployment-analysis" assessed Failed
 Strategy:        Canary
-Images:          quay.io/kdubois/argo-rollouts-quarkus-demo:2.0.0 (stable)
+Images:          ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (stable)
 Replicas:
   Desired:       3
   Current:       3
@@ -535,27 +503,12 @@ kubectl argo rollouts abort demo-app -n demo-app
 # Promote to stable
 kubectl argo rollouts promote demo-app -n demo-app --full
 
-# Reset to version 1.0.0
+# Reset to stable version
 kubectl argo rollouts set image demo-app -n demo-app \
-  demo-app=quay.io/kdubois/argo-rollouts-quarkus-demo:1.0.0
+  demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable
 
-# Set scenario mode to happy
-kubectl patch rollout demo-app -n demo-app --type merge -p '
-{
-  "spec": {
-    "template": {
-      "spec": {
-        "containers": [{
-          "name": "demo-app",
-          "env": [{
-            "name": "SCENARIO_MODE",
-            "value": "happy"
-          }]
-        }]
-      }
-    }
-  }
-}'
+# Or use kubectl set image
+kubectl set image rollout/demo-app demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable -n demo-app
 ```
 
 ### Clean Up Analysis Runs
@@ -745,11 +698,11 @@ Your demo is successful if the audience understands how AI analyzes deployments,
 
 ## Additional Resources
 
-- **GitHub Repository**: https://github.com/carlossg/argo-rollouts
+- **Demo App Repository**: https://github.com/kdubois/argo-rollouts-quarkus-demo
 - **Deployment Guide**: [DEPLOYMENT.md](DEPLOYMENT.md)
 - **Argo Rollouts Docs**: https://argo-rollouts.readthedocs.io/
 - **AI Plugin**: https://github.com/kdubois/rollouts-plugin-metric-ai
-- **Kubernetes Agent**: https://github.com/carlossg/kubernetes-agent
+- **Kubernetes Agent**: https://github.com/kdubois/kubernetes-aiops-agent
 
 ---
 

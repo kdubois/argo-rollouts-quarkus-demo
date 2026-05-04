@@ -124,7 +124,7 @@ public class MetricsResource {
         if (enableNullPointerBug) {
             try {
                 String nullString = null;
-                length = nullString.length();  // NullPointerException here!
+                length = versionUpper.length(); // Fixed: use correct variable
             } catch (NullPointerException e) {
                 // Log the full stack trace so the AI agent can identify the file and line
                 LOG.error("NullPointerException in getStatus method", e);

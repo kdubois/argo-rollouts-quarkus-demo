@@ -2,6 +2,91 @@
 
 let previousSuccessRate = null;
 let previousErrorRate = null;
+const DISPLAY_MODE_KEY = 'dashboardDisplayMode';
+
+function getStoredDisplayMode() {
+    try {
+        return localStorage.getItem(DISPLAY_MODE_KEY);
+    } catch {
+        return null;
+    }
+}
+
+function setStoredDisplayMode(mode) {
+    try {
+        localStorage.setItem(DISPLAY_MODE_KEY, mode);
+    } catch {
+        // Ignore storage restrictions and keep in-memory mode only.
+    }
+}
+
+function getDisplayModeFromUrl() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const mode = params.get('mode');
+        if (mode === 'projector' || mode === 'stage') {
+            return mode;
+        }
+    } catch {
+        // Ignore malformed URL state.
+    }
+    return null;
+}
+
+function applyDisplayMode(mode) {
+    const body = document.body;
+    if (!body) return;
+    const isProjectorMode = mode === 'projector';
+    body.classList.toggle('projector-mode', isProjectorMode);
+    body.classList.toggle('stage-mode', !isProjectorMode);
+
+    const toggle = document.getElementById('displayModeToggle');
+    if (toggle) {
+        toggle.textContent = isProjectorMode ? 'Stage Mode' : 'Projector Mode';
+        toggle.setAttribute('aria-pressed', isProjectorMode ? 'true' : 'false');
+    }
+}
+
+function initDisplayModeControls() {
+    const toggle = document.getElementById('displayModeToggle');
+    if (!toggle) return;
+
+    const initialMode = getDisplayModeFromUrl() || getStoredDisplayMode() || 'stage';
+    applyDisplayMode(initialMode);
+
+    toggle.addEventListener('click', () => {
+        const currentMode = document.body.classList.contains('projector-mode') ? 'projector' : 'stage';
+        const nextMode = currentMode === 'projector' ? 'stage' : 'projector';
+        applyDisplayMode(nextMode);
+        setStoredDisplayMode(nextMode);
+
+        if (successRateHistory.length > 0) {
+            updateSuccessRateGraph(successRateHistory[successRateHistory.length - 1]);
+        }
+    });
+}
+
+function getGraphPalette() {
+    if (document.body.classList.contains('projector-mode')) {
+        return {
+            gridStroke: 'rgba(82, 105, 145, 0.24)',
+            gridLabel: 'rgba(50, 73, 108, 0.82)',
+            threshold: 'rgba(64, 95, 140, 0.56)',
+            high: '#0c987f',
+            mid: '#b87a0c',
+            low: '#c74060'
+        };
+    }
+
+    return {
+        gridStroke: 'rgba(91, 111, 151, 0.25)',
+        gridLabel: 'rgba(141, 165, 212, 0.7)',
+        threshold: 'rgba(125, 152, 200, 0.5)',
+        high: '#4fe0ce',
+        mid: '#ffc461',
+        low: '#ff7a8f'
+    };
+}
 
 function updateDashboard() {
     Promise.all([
@@ -167,9 +252,11 @@ function updateSuccessRateGraph(currentSuccessRate) {
         return height - ((rate - yMin) / yRange) * height;
     }
 
+    const palette = getGraphPalette();
+
     // Grid lines with labels
-    ctx.strokeStyle = 'rgba(100, 116, 139, 0.25)';
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.7)';
+    ctx.strokeStyle = palette.gridStroke;
+    ctx.fillStyle = palette.gridLabel;
     ctx.font = '12px monospace';
     ctx.lineWidth = 1;
     const gridStep = yRange <= 10 ? 2 : yRange <= 25 ? 5 : 10;
@@ -184,7 +271,7 @@ function updateSuccessRateGraph(currentSuccessRate) {
     }
 
     // Data line
-    ctx.strokeStyle = currentSuccessRate >= 95 ? '#34d399' : currentSuccessRate >= 90 ? '#fbbf24' : '#f87171';
+    ctx.strokeStyle = currentSuccessRate >= 95 ? palette.high : currentSuccessRate >= 90 ? palette.mid : palette.low;
     ctx.lineWidth = 3;
     ctx.beginPath();
 
@@ -199,7 +286,7 @@ function updateSuccessRateGraph(currentSuccessRate) {
 
     // 95% threshold line (only if in visible range)
     if (95 >= yMin && 95 <= yMax) {
-        ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+        ctx.strokeStyle = palette.threshold;
         ctx.lineWidth = 2;
         ctx.setLineDash([4, 4]);
         const thresholdY = rateToY(95);
@@ -441,6 +528,7 @@ if (document.readyState === 'loading') {
 }
 
 function init() {
+    initDisplayModeControls();
     updateDashboard();
     setInterval(updateDashboard, 2000);
     loadActivityHistory();

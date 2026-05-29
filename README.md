@@ -94,7 +94,7 @@ The application provides three pre-built container images with different behavio
 
 ## Technology Stack
 
-- **Quarkus 3.32.1**: Supersonic Subatomic Java Framework
+- **Quarkus**: Supersonic Subatomic Java Framework
 - **Quarkus Web Bundler**: Zero-config bundling for web assets
 - **Qute Templates**: Type-safe templating for the dashboard
 - **SmallRye Health**: Health check endpoints
@@ -307,89 +307,6 @@ The application includes a web dashboard showing:
 
 Access the dashboard at: http://localhost:8080/
 
-## Development
-
-### Project Structure
-
-```
-demo-app/
-├── src/
-│   ├── main/
-│   │   ├── docker/              # Dockerfiles for different builds
-│   │   ├── java/                # Java source code
-│   │   │   └── dev/kevindubois/
-│   │   │       ├── demo/        # Demo-specific code
-│   │   │       │   ├── DashboardResource.java
-│   │   │       │   ├── MetricsResource.java
-│   │   │       │   └── model/   # Data models
-│   │   │       ├── GreetingResource.java
-│   │   │       ├── MyLivenessCheck.java
-│   │   │       └── MyReadinessCheck.java
-│   │   └── resources/
-│   │       ├── application.properties
-│   │       ├── templates/       # Qute templates
-│   │       └── web/             # Web assets (JS, CSS)
-│   └── test/                    # Test code
-├── kubernetes/                  # Kubernetes manifests
-│   ├── namespace.yaml
-│   ├── rollout.yaml            # Argo Rollouts configuration
-│   ├── analysistemplate.yaml   # AI analysis configuration
-│   ├── service-*.yaml          # Kubernetes services
-│   ├── gateway.yaml            # Istio gateway
-│   ├── virtualservice.yaml     # Istio virtual service
-│   └── kustomization.yaml      # Kustomize configuration
-├── Makefile                    # Build automation
-├── pom.xml                     # Maven configuration
-├── README.md                   # This file
-├── DEPLOYMENT.md               # Deployment guide
-└── DEMO_SCRIPT.md              # Conference demo script
-```
-
-### Adding New Features
-
-When adding new features to the demo application:
-
-1. Follow the existing code structure and patterns
-2. Add appropriate health checks if needed
-3. Expose relevant metrics for monitoring
-4. Update the dashboard if the feature affects user experience
-5. Add tests for new functionality
-6. Update documentation
-
-### Code Formatting
-
-Format code using the Maven formatter:
-
-```bash
-./mvnw fmt:format
-```
-
-Or use the Makefile:
-
-```bash
-make format
-```
-
-## Testing
-
-Run the test suite:
-
-```bash
-./mvnw test
-```
-
-Run integration tests:
-
-```bash
-./mvnw verify
-```
-
-Run tests with coverage:
-
-```bash
-./mvnw verify jacoco:report
-```
-
 ## Troubleshooting
 
 ### Application Won't Start
@@ -450,7 +367,7 @@ When contributing:
 
 - **[Argo Rollouts](https://github.com/argoproj/argo-rollouts)**: Progressive delivery for Kubernetes
 - **[rollouts-plugin-metric-ai](https://github.com/kdubois/rollouts-plugin-metric-ai)**: AI-powered metric provider plugin
-- **[kubernetes-agent](https://github.com/carlossg/kubernetes-agent)**: Autonomous Kubernetes debugging agent
+- **[kubernetes-agent](https://github.com/kdubois/kubernetes-aiops-agent)**: Autonomous Kubernetes debugging agent
 - **[Quarkus](https://quarkus.io)**: Supersonic Subatomic Java Framework
 
 ## License
@@ -466,5 +383,3 @@ For questions or issues:
 - Consult the related project documentation
 
 ---
-
-**Ready to see AI-powered progressive delivery in action?** Follow the [Deployment Guide](DEPLOYMENT.md) to get started!

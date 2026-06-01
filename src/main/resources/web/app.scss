@@ -676,17 +676,55 @@ body::before {
 
 .activity-item.decision-event {
     border-left-color: rgba(255, 196, 97, 0.95);
+    border-left-width: 4px;
     background: rgba(255, 196, 97, 0.06);
+    padding: 14px 14px;
 }
 
 .activity-item.decision-event.promote {
     border-left-color: rgba(79, 224, 206, 0.95);
-    background: rgba(79, 224, 206, 0.06);
+    background: rgba(79, 224, 206, 0.08);
 }
 
 .activity-item.decision-event.rollback {
     border-left-color: rgba(255, 122, 143, 0.95);
-    background: rgba(255, 122, 143, 0.06);
+    background: rgba(255, 122, 143, 0.08);
+}
+
+.decision-event-verdict {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 6px;
+}
+
+.decision-event-icon {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.decision-event-label {
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.activity-item.decision-event.promote .decision-event-icon {
+    color: var(--signal-cyan);
+}
+
+.activity-item.decision-event.promote .decision-event-label {
+    color: #8cf4e6;
+}
+
+.activity-item.decision-event.rollback .decision-event-icon {
+    color: var(--signal-red);
+}
+
+.activity-item.decision-event.rollback .decision-event-label {
+    color: #ffafbf;
 }
 
 .activity-item.error-event,
@@ -729,9 +767,162 @@ body::before {
 
 .info-panel {
     display: grid;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto 1fr;
     gap: 10px;
     min-height: 0;
+}
+
+.decision-card {
+    border: 1px solid var(--line);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.015), 0 4px 10px var(--shadow);
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    padding: 12px 14px;
+    transition: border-color 300ms ease;
+}
+
+.decision-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.decision-phase-label {
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.62rem;
+    color: #8ba3cb;
+}
+
+.decision-phase-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 3px 8px;
+    border: 1px solid var(--line);
+    color: var(--text-soft);
+}
+
+.decision-verdict {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.verdict-icon {
+    font-size: 1.2rem;
+    line-height: 1;
+    color: var(--text-dim);
+}
+
+.verdict-text {
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--text-main);
+}
+
+.decision-message {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.74rem;
+    line-height: 1.4;
+    color: var(--text-soft);
+    min-height: 0;
+}
+
+.decision-card.promote {
+    border-color: rgba(79, 224, 206, 0.55);
+
+    .decision-phase-badge {
+        color: #83f4e4;
+        border-color: rgba(79, 224, 206, 0.55);
+    }
+    .verdict-icon {
+        color: var(--signal-cyan);
+    }
+    .verdict-text {
+        color: #b0ffe9;
+    }
+}
+
+.decision-card.rollback {
+    border-color: rgba(255, 122, 143, 0.55);
+
+    .decision-phase-badge {
+        color: #ffc1cc;
+        border-color: rgba(255, 122, 143, 0.55);
+    }
+    .verdict-icon {
+        color: var(--signal-red);
+    }
+    .verdict-text {
+        color: #ffd0da;
+    }
+}
+
+.decision-card.running {
+    border-color: rgba(111, 178, 255, 0.55);
+
+    .decision-phase-badge {
+        color: #a9d0ff;
+        border-color: rgba(111, 178, 255, 0.55);
+    }
+    .verdict-icon {
+        color: var(--signal-blue);
+        animation: statusPulse 1.3s ease-in-out infinite;
+    }
+    .verdict-text {
+        color: #c0dcff;
+    }
+}
+
+.decision-card.error {
+    border-color: rgba(255, 196, 97, 0.55);
+
+    .decision-phase-badge {
+        color: #ffe1ae;
+        border-color: rgba(255, 196, 97, 0.55);
+    }
+    .verdict-icon {
+        color: var(--signal-amber);
+    }
+}
+
+.decision-error-details {
+    margin-top: 8px;
+
+    summary {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-dim);
+        cursor: pointer;
+        user-select: none;
+    }
+
+    summary:hover {
+        color: var(--text-soft);
+    }
+}
+
+.decision-error-log {
+    margin-top: 6px;
+    padding: 8px 10px;
+    background: #0b1220;
+    border: 1px solid var(--line-soft);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    line-height: 1.4;
+    color: #ff9fb1;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 120px;
+    overflow-y: auto;
 }
 
 .graph-card,
@@ -898,11 +1089,55 @@ body.projector-mode {
 body.projector-mode .top-bar,
 body.projector-mode .status-strip,
 body.projector-mode .activity-panel,
+body.projector-mode .decision-card,
 body.projector-mode .graph-card,
 body.projector-mode .requests-card,
 body.projector-mode .version-badge,
 body.projector-mode .theme-toggle {
     box-shadow: none;
+}
+
+body.projector-mode .decision-card.promote {
+    border-color: rgba(12, 152, 127, 0.55);
+    .verdict-text { color: #0b6e5c; }
+    .verdict-icon { color: #0c987f; }
+    .decision-phase-badge { color: #0c987f; border-color: rgba(12, 152, 127, 0.55); }
+}
+
+body.projector-mode .decision-card.rollback {
+    border-color: rgba(199, 64, 96, 0.55);
+    .verdict-text { color: #a33050; }
+    .verdict-icon { color: #c74060; }
+    .decision-phase-badge { color: #c74060; border-color: rgba(199, 64, 96, 0.55); }
+}
+
+body.projector-mode .decision-card.running {
+    border-color: rgba(42, 90, 162, 0.55);
+    .verdict-text { color: #2a5aa2; }
+    .verdict-icon { color: #3572c2; }
+    .decision-phase-badge { color: #3572c2; border-color: rgba(42, 90, 162, 0.55); }
+}
+
+body.projector-mode .decision-error-log {
+    background: #f0f4fb;
+    border-color: var(--line);
+    color: #a33050;
+}
+
+body.projector-mode .activity-item.decision-event.promote .decision-event-icon {
+    color: #0c987f;
+}
+
+body.projector-mode .activity-item.decision-event.promote .decision-event-label {
+    color: #0b6e5c;
+}
+
+body.projector-mode .activity-item.decision-event.rollback .decision-event-icon {
+    color: #c74060;
+}
+
+body.projector-mode .activity-item.decision-event.rollback .decision-event-label {
+    color: #a33050;
 }
 
 body.projector-mode .logo,

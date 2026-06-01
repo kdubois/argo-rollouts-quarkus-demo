@@ -116,8 +116,25 @@
                 </div>
             </div>
 
-            <!-- Right: Metrics + Requests -->
+            <!-- Right: Decision + Metrics + Requests -->
             <div class="info-panel">
+                <!-- AI Decision -->
+                <div class="decision-card" id="decisionCard">
+                    <div class="decision-header">
+                        <span class="decision-phase-label">AI Analysis</span>
+                        <span class="decision-phase-badge" id="decisionPhaseBadge">Waiting</span>
+                    </div>
+                    <div class="decision-verdict" id="decisionVerdict">
+                        <span class="verdict-icon" id="verdictIcon"></span>
+                        <span class="verdict-text" id="verdictText">Waiting for analysis...</span>
+                    </div>
+                    <div class="decision-message" id="decisionMessage"></div>
+                    <details class="decision-error-details" id="decisionErrorDetails" style="display:none">
+                        <summary>Error details</summary>
+                        <pre class="decision-error-log" id="decisionErrorLog"></pre>
+                    </details>
+                </div>
+
                 <!-- Success Rate Graph -->
                 <div class="graph-card">
                     <div class="graph-title">Success Rate Trend <span class="graph-legend">--- 95% threshold</span></div>

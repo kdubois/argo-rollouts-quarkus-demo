@@ -215,20 +215,90 @@ function updateAIAnalysis(rolloutData, metricsData, versionMetrics) {
         const stableSuccessRate = Math.round(versionMetrics.stableSuccessRate || 0);
         const canarySuccessRate = Math.round(versionMetrics.canarySuccessRate || 0);
 
-        // Update canary segment visual state based on analysis
         const analysis = rolloutData.analysis;
         const canarySegment = document.getElementById('canarySegment');
-        
+
         if (analysis && (analysis.phase === 'Failed' || analysis.phase === 'Degraded' || analysis.successful === false)) {
             canarySegment.classList.add('degraded');
         } else {
             canarySegment.classList.remove('degraded');
         }
 
+        updateDecisionCard(analysis, rolloutData.phase);
+
         const graphSuccessRate = (versionMetrics.canaryRequestCount > 0) ? canarySuccessRate : stableSuccessRate;
         updateSuccessRateGraph(graphSuccessRate);
     } catch (error) {
         console.error('Error in updateAIAnalysis:', error);
+    }
+}
+
+function updateDecisionCard(analysis, rolloutPhase) {
+    const card = document.getElementById('decisionCard');
+    const phaseBadge = document.getElementById('decisionPhaseBadge');
+    const verdictIcon = document.getElementById('verdictIcon');
+    const verdictText = document.getElementById('verdictText');
+    const messageEl = document.getElementById('decisionMessage');
+    const errorDetails = document.getElementById('decisionErrorDetails');
+    const errorLog = document.getElementById('decisionErrorLog');
+
+    card.classList.remove('promote', 'rollback', 'running', 'pending', 'error');
+
+    if (!analysis || analysis.phase === 'NotStarted') {
+        phaseBadge.textContent = 'Pending';
+        card.classList.add('pending');
+        verdictIcon.textContent = '\u2014';
+        verdictText.textContent = 'Waiting for analysis to begin';
+        messageEl.textContent = '';
+        errorDetails.style.display = 'none';
+        return;
+    }
+
+    phaseBadge.textContent = analysis.phase || 'Unknown';
+
+    if (analysis.phase === 'Running') {
+        card.classList.add('running');
+        verdictIcon.textContent = '\u25B6';
+        verdictText.textContent = 'Analysis in progress...';
+    } else if (analysis.successful === true) {
+        card.classList.add('promote');
+        verdictIcon.textContent = '\u2714';
+        verdictText.textContent = 'Promote recommended';
+    } else if (analysis.successful === false) {
+        card.classList.add('rollback');
+        verdictIcon.textContent = '\u2718';
+        verdictText.textContent = 'Rollback recommended';
+    } else if (analysis.phase === 'Error') {
+        card.classList.add('error');
+        verdictIcon.textContent = '\u26A0';
+        verdictText.textContent = 'Analysis error';
+    } else {
+        card.classList.add('pending');
+        verdictIcon.textContent = '\u2014';
+        verdictText.textContent = analysis.phase;
+    }
+
+    if (rolloutPhase === 'Healthy') {
+        card.classList.remove('running', 'pending');
+        card.classList.add('promote');
+        verdictIcon.textContent = '\u2714';
+        verdictText.textContent = 'Rollout completed \u2014 promoted';
+        phaseBadge.textContent = 'Successful';
+    } else if (rolloutPhase === 'Degraded' || rolloutPhase === 'Aborted') {
+        card.classList.remove('running', 'pending', 'promote');
+        card.classList.add('rollback');
+        verdictIcon.textContent = '\u2718';
+        verdictText.textContent = 'Rollout aborted \u2014 rolled back';
+        phaseBadge.textContent = 'Failed';
+    }
+
+    messageEl.textContent = analysis.message || '';
+
+    if (analysis.errorLog) {
+        errorDetails.style.display = 'block';
+        errorLog.textContent = analysis.errorLog;
+    } else {
+        errorDetails.style.display = 'none';
     }
 }
 
@@ -413,14 +483,34 @@ function appendActivityItem(event) {
         }
     }
 
-    let html = '<div class="activity-dot-indicator ' + typeClass + '"></div>' +
-        '<div class="activity-body">' +
-        '<div class="activity-item-header">' +
-        '<span class="activity-type-badge ' + typeClass + '">' +
-        formatEventType(event.type) + '</span>' +
-        '<span class="activity-timestamp">' + time + '</span>' +
-        '</div>' +
-        '<div class="activity-message">' + messageHtml + '</div>';
+    let html = '';
+
+    if (event.type === 'DECISION') {
+        const isPromote = event.message.includes('PROMOTE');
+        const verdictIcon = isPromote ? '\u2714' : '\u2718';
+        const verdictLabel = isPromote ? 'Promote' : 'Rollback';
+        html = '<div class="activity-dot-indicator ' + typeClass + '"></div>' +
+            '<div class="activity-body">' +
+            '<div class="activity-item-header">' +
+            '<span class="activity-type-badge ' + typeClass + '">' +
+            formatEventType(event.type) + '</span>' +
+            '<span class="activity-timestamp">' + time + '</span>' +
+            '</div>' +
+            '<div class="decision-event-verdict">' +
+            '<span class="decision-event-icon">' + verdictIcon + '</span>' +
+            '<span class="decision-event-label">' + verdictLabel + '</span>' +
+            '</div>' +
+            '<div class="activity-message">' + messageHtml + '</div>';
+    } else {
+        html = '<div class="activity-dot-indicator ' + typeClass + '"></div>' +
+            '<div class="activity-body">' +
+            '<div class="activity-item-header">' +
+            '<span class="activity-type-badge ' + typeClass + '">' +
+            formatEventType(event.type) + '</span>' +
+            '<span class="activity-timestamp">' + time + '</span>' +
+            '</div>' +
+            '<div class="activity-message">' + messageHtml + '</div>';
+    }
 
     if (event.details) {
         html += '<div class="activity-details">' + escapeHtml(event.details) + '</div>';

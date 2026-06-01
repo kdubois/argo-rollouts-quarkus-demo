@@ -121,7 +121,7 @@ public class MetricsResource {
         int length = versionUpper.length();
         
         // Intentionally dereference null to cause NPE (only for scenario 2)
-        if (enableNullPointerBug) {
+        // Fixed: removed intentional NPE block
             try {
                 String nullString = null;
                 length = nullString.length();  // NullPointerException here!

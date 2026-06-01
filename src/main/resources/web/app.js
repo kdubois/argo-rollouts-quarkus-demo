@@ -284,15 +284,19 @@ function updateDecisionCard(analysis, rolloutPhase) {
         verdictIcon.textContent = '\u2714';
         verdictText.textContent = 'Rollout completed \u2014 promoted';
         phaseBadge.textContent = 'Successful';
+        messageEl.textContent = analysis.message && analysis.message !== 'Analysis has not started yet'
+            ? analysis.message : 'Canary passed AI analysis';
     } else if (rolloutPhase === 'Degraded' || rolloutPhase === 'Aborted') {
         card.classList.remove('running', 'pending', 'promote');
         card.classList.add('rollback');
         verdictIcon.textContent = '\u2718';
         verdictText.textContent = 'Rollout aborted \u2014 rolled back';
         phaseBadge.textContent = 'Failed';
+        messageEl.textContent = analysis.message && analysis.message !== 'Analysis has not started yet'
+            ? analysis.message : 'AI analysis detected issues — automatic rollback applied';
+    } else {
+        messageEl.textContent = analysis.message || '';
     }
-
-    messageEl.textContent = analysis.message || '';
 
     if (analysis.errorLog) {
         errorDetails.style.display = 'block';
@@ -513,7 +517,7 @@ function appendActivityItem(event) {
     }
 
     if (event.details) {
-        html += '<div class="activity-details">' + escapeHtml(event.details) + '</div>';
+        html += '<div class="activity-details">' + linkifyDetails(event.details) + '</div>';
     }
 
     html += '</div>';
@@ -611,6 +615,18 @@ function formatEventType(type) {
         'ANALYSIS_SUMMARY': 'Summary'
     };
     return labels[type] || type;
+}
+
+function linkifyDetails(str) {
+    if (!str) return '';
+    var urlRe = /(https?:\/\/[^\s<>"']+)/;
+    return str.split(urlRe).map(function(part, i) {
+        if (i % 2 === 1) {
+            var escaped = escapeHtml(part);
+            return '<a href="' + escaped + '" target="_blank" rel="noopener" class="activity-link">' + escaped + '</a>';
+        }
+        return escapeHtml(part);
+    }).join('');
 }
 
 function escapeHtml(str) {

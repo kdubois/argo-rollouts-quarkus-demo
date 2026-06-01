@@ -664,6 +664,17 @@ body::before {
     word-break: break-word;
 }
 
+.activity-link {
+    color: #7dc8ff;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    word-break: break-all;
+
+    &:hover {
+        color: #a9dcff;
+    }
+}
+
 .activity-item.decision-event,
 .activity-item.remediation-event,
 .activity-item.error-event,
@@ -1155,6 +1166,11 @@ body.projector-mode .traffic-label,
 body.projector-mode .req-legend,
 body.projector-mode .footer {
     color: #4a678f;
+}
+
+body.projector-mode .activity-link {
+    color: #2a6ec2;
+    &:hover { color: #1a4f8f; }
 }
 
 body.projector-mode .version-badge {

@@ -293,11 +293,21 @@ body::before {
 }
 
 .traffic-label {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
     font-family: 'IBM Plex Mono', monospace;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     font-size: 0.65rem;
     color: var(--text-soft);
+}
+
+.traffic-meta {
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    text-transform: none;
 }
 
 .stages-row {

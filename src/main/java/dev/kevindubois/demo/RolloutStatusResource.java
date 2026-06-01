@@ -15,6 +15,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -28,6 +29,10 @@ public class RolloutStatusResource {
 
     @Inject
     KubernetesClient kubernetesClient;
+
+    @Inject
+    @RestClient
+    KubernetesRolloutClient kubernetesRolloutClient;
 
     @ConfigProperty(name = "rollout.name", defaultValue = "quarkus-demo")
     String rolloutName;
@@ -396,12 +401,27 @@ public class RolloutStatusResource {
             Log.debug("Fetching canary metrics...");
             PodMetrics canaryMetrics = fetchMetricsFromPods("canary");
             Log.debug("Canary metrics: successRate=" + canaryMetrics.successRate + ", requests=" + canaryMetrics.requestCount);
+
+            long stablePodCount = stableMetrics.podCount;
+            long canaryPodCount = canaryMetrics.podCount;
+            try {
+                KubernetesRolloutClient.RolloutSummaryResponse summary =
+                        kubernetesRolloutClient.getSummary(rolloutNamespace, rolloutName);
+                if (summary != null && summary.available()) {
+                    stablePodCount = summary.stablePodCount();
+                    canaryPodCount = summary.canaryPodCount();
+                }
+            } catch (Exception e) {
+                Log.debug("Could not fetch pod counts from kubernetes-agent, using local fallback: " + e.getMessage());
+            }
             
             return new VersionMetrics(
                 stableMetrics.successRate,
                 canaryMetrics.successRate,
                 stableMetrics.requestCount,
-                canaryMetrics.requestCount
+                canaryMetrics.requestCount,
+                stablePodCount,
+                canaryPodCount
             );
         } catch (Exception e) {
             Log.error("Error fetching version metrics", e);
@@ -424,7 +444,7 @@ public class RolloutStatusResource {
             if (pods.isEmpty()) {
                 Log.warn("No pods found with role: " + roleLabel);
                 // Return 100% success rate with 0 requests when no pods found
-                return new PodMetrics(100.0, 0);
+                return new PodMetrics(100.0, 0, 0);
             }
             
             double totalSuccessRate = 0.0;
@@ -494,26 +514,28 @@ public class RolloutStatusResource {
             // This prevents showing 0% when pods are just starting up
             if (successfulPods == 0) {
                 Log.warn("No pods were reachable for role: " + roleLabel);
-                return new PodMetrics(100.0, 0);
+                return new PodMetrics(100.0, 0, pods.size());
             }
             
             double avgSuccessRate = totalSuccessRate / successfulPods;
             Log.debug("Calculated metrics for " + roleLabel + ": successRate=" + avgSuccessRate + ", requests=" + totalRequests);
-            return new PodMetrics(avgSuccessRate, totalRequests);
+            return new PodMetrics(avgSuccessRate, totalRequests, pods.size());
             
         } catch (Exception e) {
             Log.error("Error fetching metrics from pods with role " + roleLabel + ": " + e.getMessage());
-            return new PodMetrics(100.0, 0);
+            return new PodMetrics(100.0, 0, 0);
         }
     }
     
     private static class PodMetrics {
         final double successRate;
         final long requestCount;
+        final long podCount;
         
-        PodMetrics(double successRate, long requestCount) {
+        PodMetrics(double successRate, long requestCount, long podCount) {
             this.successRate = successRate;
             this.requestCount = requestCount;
+            this.podCount = podCount;
         }
     }
 }

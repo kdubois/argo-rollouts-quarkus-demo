@@ -96,7 +96,7 @@ function updateDashboard() {
     ])
     .then(([metricsData, rolloutData, versionMetrics]) => {
         updateRolloutProgress(rolloutData);
-        updateTrafficDistribution(rolloutData);
+        updateTrafficDistribution(rolloutData, versionMetrics);
         updateAIAnalysis(rolloutData, metricsData, versionMetrics);
         visualizeRealRequests(versionMetrics);
         clearError();
@@ -181,7 +181,7 @@ function updateRolloutProgress(rolloutData) {
     });
 }
 
-function updateTrafficDistribution(rolloutData) {
+function updateTrafficDistribution(rolloutData, versionMetrics) {
     const canaryWeight = rolloutData.canaryWeight ?? 0;
     const stableWeight = 100 - canaryWeight;
 
@@ -197,6 +197,17 @@ function updateTrafficDistribution(rolloutData) {
 
     stablePercentage.style.display = stableWeight < 15 ? 'none' : 'flex';
     canaryPercentage.style.display = canaryWeight < 15 ? 'none' : 'flex';
+
+    const stablePodCount = document.getElementById('stablePodCount');
+    const canaryPodCount = document.getElementById('canaryPodCount');
+    if (stablePodCount) {
+        const count = versionMetrics?.stablePodCount ?? 0;
+        stablePodCount.textContent = count + ' pod' + (count === 1 ? '' : 's');
+    }
+    if (canaryPodCount) {
+        const count = versionMetrics?.canaryPodCount ?? 0;
+        canaryPodCount.textContent = count + ' pod' + (count === 1 ? '' : 's');
+    }
 }
 
 function updateAIAnalysis(rolloutData, metricsData, versionMetrics) {

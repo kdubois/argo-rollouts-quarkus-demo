@@ -476,7 +476,9 @@ function appendActivityItem(event) {
         item.classList.add('summary-event');
     }
 
-    let messageHtml = escapeHtml(event.message);
+    let messageHtml = (event.type === 'REMEDIATION')
+        ? linkifyDetails(event.message)
+        : escapeHtml(event.message);
 
     if (event.type === 'CONFIDENCE_SCORE') {
         const scoreMatch = event.message.match(/Score:\s*(\d+)/);

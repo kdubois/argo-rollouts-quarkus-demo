@@ -42,7 +42,7 @@ function applyDisplayMode(mode) {
 
     const toggle = document.getElementById('displayModeToggle');
     if (toggle) {
-        toggle.textContent = isProjectorMode ? 'Stage Mode' : 'Projector Mode';
+        toggle.textContent = isProjectorMode ? 'Dark Mode' : 'Light Mode';
         toggle.setAttribute('aria-pressed', isProjectorMode ? 'true' : 'false');
     }
 }

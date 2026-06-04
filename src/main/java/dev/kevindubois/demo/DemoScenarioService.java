@@ -49,17 +49,11 @@ public class DemoScenarioService {
         if (memoryLeakEnabled) {
             memoryLeakList = new ArrayList<>();
             memoryLeakStartTime = System.currentTimeMillis();
-            LOG.warn("MEMORY LEAK SCENARIO ENABLED - This will cause gradual memory exhaustion and latency increase");
         }
 
         // Initialize connection pool if enabled
         if (connectionLeakEnabled) {
             connectionPool = new Semaphore(MAX_CONNECTIONS);
-            LOG.warn("CONNECTION LEAK SCENARIO ENABLED - This will cause connection pool exhaustion");
-        }
-
-        if (cpuSpikeEnabled) {
-            LOG.warn("CPU SPIKE SCENARIO ENABLED - This will cause periodic CPU spikes");
         }
 
         LOG.info("DemoScenarioService initialized with mode: " + scenarioMode);

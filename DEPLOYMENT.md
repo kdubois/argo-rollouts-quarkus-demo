@@ -240,19 +240,10 @@ The Kubernetes Agent is an autonomous AI agent that analyzes deployments and cre
 #### Create Secret for API Keys
 
 ```bash
-# Create secret with your API keys
+# Create secret with your API keys (any OpenAI-compatible endpoint)
 kubectl create secret generic kubernetes-agent -n argo-rollouts \
-  --from-literal=GOOGLE_API_KEY='your-google-api-key' \
-  --from-literal=GITHUB_TOKEN='your-github-token' \
-  --from-literal=GIT_USERNAME='kubernetes-agent' \
-  --from-literal=GIT_EMAIL='agent@example.com'
-
-# Or for OpenAI:
-kubectl create secret generic kubernetes-agent -n argo-rollouts \
-  --from-literal=OPENAI_API_KEY='your-openai-api-key' \
-  --from-literal=GITHUB_TOKEN='your-github-token' \
-  --from-literal=GIT_USERNAME='kubernetes-agent' \
-  --from-literal=GIT_EMAIL='agent@example.com'
+  --from-literal=analysis_api_key='your-api-key' \
+  --from-literal=github_token='your-github-token'
 ```
 
 #### Deploy the Agent
@@ -595,15 +586,14 @@ The rollout should progress through the canary steps (20%, 50%, 100%). At each s
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GOOGLE_API_KEY` | Yes* | - | Google Gemini API key |
-| `OPENAI_API_KEY` | Yes* | - | OpenAI API key |
+| `ANALYSIS_API_KEY` | Yes | - | API key for analysis model (any OpenAI-compatible endpoint) |
+| `ANALYSIS_BASE_URL` | No | https://api.openai.com/v1 | Base URL for analysis model API |
+| `ANALYSIS_MODEL` | No | gpt-4o | Analysis model name |
+| `REMEDIATION_API_KEY` | No | - | API key for remediation model (defaults to ANALYSIS_API_KEY) |
+| `REMEDIATION_MODEL` | No | gpt-4o | Remediation model name |
 | `GITHUB_TOKEN` | Yes | - | GitHub personal access token |
 | `GIT_USERNAME` | No | kubernetes-agent | Git commit username |
 | `GIT_EMAIL` | No | agent@example.com | Git commit email |
-| `GEMINI_MODEL` | No | gemini-2.5-flash | Gemini model name |
-| `OPENAI_MODEL` | No | gpt-4o | OpenAI model name |
-
-*Either `GOOGLE_API_KEY` or `OPENAI_API_KEY` is required.
 
 #### AI Plugin
 
@@ -677,7 +667,7 @@ kubectl logs -n argo-rollouts deployment/kubernetes-agent
 kubectl get secret kubernetes-agent -n argo-rollouts -o yaml
 
 # Check if API keys are valid
-kubectl exec -n argo-rollouts deployment/kubernetes-agent -- env | grep -E "GOOGLE_API_KEY|OPENAI_API_KEY|GITHUB_TOKEN"
+kubectl exec -n argo-rollouts deployment/kubernetes-agent -- env | grep -E "ANALYSIS_API_KEY|REMEDIATION_API_KEY|GITHUB_TOKEN"
 
 # Restart the agent
 kubectl rollout restart deployment/kubernetes-agent -n argo-rollouts

@@ -142,7 +142,7 @@ public class DemoScenarioService {
 
         // Allocate 1MB per request - this will cause OOM eventually
         byte[] leak = new byte[1024 * 1024]; // 1MB
-        memoryLeakList.add(leak);
+        if (memoryLeakList.size() < 100) memoryLeakList.add(leak);
 
         long leakedMB = memoryLeakList.size();
         long elapsedSeconds = (System.currentTimeMillis() - memoryLeakStartTime) / 1000;

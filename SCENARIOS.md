@@ -273,8 +273,11 @@ ERROR CRITICAL: Application struggling. Response times 6x baseline. Heap usage: 
 **Bug Details**:
 ```java
 // DemoScenarioService.java
-// Delay grows with pod uptime after a 20 second grace period
-long delayMs = Math.min((elapsedSeconds - 20) * 5, 250);
+// No delay during the first 20 seconds, then the delay grows linearly with uptime
+long delayMs = 0;
+if (elapsedSeconds > 20) {
+    delayMs = Math.min((elapsedSeconds - 20) * 5, 250);
+}
 Thread.sleep(delayMs); // Slow responses, never failures
 ```
 

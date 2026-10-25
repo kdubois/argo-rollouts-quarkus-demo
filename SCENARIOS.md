@@ -803,8 +803,8 @@ kubectl get analysistemplate ai-analysis-agent -n quarkus-demo -o yaml
 # Verify analysis timing in rollout
 kubectl get rollout quarkus-demo -n quarkus-demo -o yaml | grep -A 5 "analysis:"
 
-# Expected: startingStep: 2 (starts after 10s pause)
-# Expected: pause: { duration: 40s } (enough time for AI)
+# Expected: startingStep: 1 (first analysis fires during the initial 10s pause)
+# Expected: count: 2, interval: 30s (second analysis lands at 60% canary weight)
 ```
 
 ---

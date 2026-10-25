@@ -474,6 +474,10 @@ function appendActivityItem(event) {
         item.classList.add('retry-event');
     } else if (event.type === 'ANALYSIS_SUMMARY') {
         item.classList.add('summary-event');
+    } else if (event.type === 'PAUSE') {
+        item.classList.add('pause-event');
+    } else if (event.type === 'PAUSE_FAILED') {
+        item.classList.add('pause-failed-event');
     }
 
     let messageHtml = (event.type === 'REMEDIATION')

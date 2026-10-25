@@ -638,6 +638,16 @@ body::before {
     border-color: rgba(255, 198, 113, 0.6);
 }
 
+.activity-type-badge.pause {
+    color: #e6dcff;
+    border-color: rgba(167, 139, 250, 0.6);
+}
+
+.activity-type-badge.pause-failed {
+    color: #ffd2db;
+    border-color: rgba(255, 122, 143, 0.54);
+}
+
 .activity-type-badge.analysis-summary {
     color: #d6fff9;
     border-color: rgba(79, 224, 206, 0.52);
@@ -681,7 +691,9 @@ body::before {
 .activity-item.insight-event,
 .activity-item.score-event,
 .activity-item.retry-event,
-.activity-item.summary-event {
+.activity-item.summary-event,
+.activity-item.pause-event,
+.activity-item.pause-failed-event {
     border-left: 3px solid transparent;
 }
 
@@ -757,6 +769,16 @@ body::before {
 
 .activity-item.summary-event {
     border-left-color: rgba(79, 224, 206, 0.9);
+}
+
+.activity-item.pause-event {
+    border-left-color: rgba(167, 139, 250, 0.9);
+    background: rgba(167, 139, 250, 0.06);
+}
+
+.activity-item.pause-failed-event {
+    border-left-color: rgba(255, 122, 143, 0.9);
+    background: rgba(255, 122, 143, 0.06);
 }
 
 .score-value {

@@ -8,6 +8,7 @@
 - [Demo Setup](#demo-setup)
 - [Happy Path Demo](#happy-path-demo)
 - [Failure Scenario Demo](#failure-scenario-demo)
+- [Latency Drift Demo](#latency-drift-demo)
 - [Q&A Talking Points](#qa-talking-points)
 - [Reset Instructions](#reset-instructions)
 - [Troubleshooting](#troubleshooting)
@@ -438,6 +439,105 @@ Open the GitHub PR link from the AnalysisRun. Show the PR description which incl
 
 ---
 
+## Latency Drift Demo
+
+**Duration**: 5-7 minutes
+
+### Scenario Overview
+
+"Now let's see a slower kind of failure. This version has no bugs in the code you can find in the logs - no exceptions, no errors, 99% success rate. But its response time drifts upward the longer it runs. The first analysis will pass, because the canary looks identical to the stable version. Only a later analysis catches it. This is why analysis has to repeat during a rollout."
+
+### Step 1: Deploy the Latency Drift Version
+
+**Talking Points**:
+
+"This version adds no delay for its first 20 seconds, then adds 5 milliseconds per second of uptime to every request, capped at 250 milliseconds. Early in the rollout it looks perfectly healthy."
+
+```bash
+# Deploy latency drift version
+kubectl set image rollout/demo-app demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v4.latency -n demo-app
+```
+
+### Step 2: Show the Clean Canary
+
+**Talking Points**:
+
+"Look at the canary logs. No errors, no exceptions, no warnings. If we only analyzed logs, we would call this deployment healthy - and early in the rollout, it is."
+
+```bash
+# Show canary logs - completely clean
+kubectl logs -n demo-app -l role=canary --tail=30
+```
+
+**Expected Output**: Normal request logs, no errors.
+
+### Step 3: First Analysis Passes
+
+**Talking Points**:
+
+"The first analysis runs seconds into the rollout, while the canary is still in its grace period. The p95 latency matches the stable version, so the AI correctly lets the rollout continue."
+
+```bash
+# Show the first analysis result
+kubectl describe analysisrun -n demo-app $(kubectl get analysisrun -n demo-app -o name | tail -1)
+```
+
+**Expected Output** (AnalysisRun):
+```
+Measurements:
+  Phase:           Successful
+  Message:         Canary deployment is healthy
+                   - Success rate: 99.9%
+                   - P95 latency: 48ms (canary) vs 50ms (stable)
+                   - No critical issues detected
+                   Decision: PROCEED
+```
+
+### Step 4: Later Analysis Fails
+
+**Talking Points**:
+
+"But the delay keeps growing. Thirty to sixty seconds in, the canary p95 is two to five times the stable baseline. The success rate is still 99% - the responses are slow, not failing. The next analysis compares the latency metrics and fails the rollout."
+
+```bash
+# Watch the later analysis iterations
+kubectl get analysisrun -n demo-app -w
+
+# Compare latency yourself
+kubectl exec -n demo-app $(kubectl get pods -n demo-app -l role=canary -o name | head -1) -- \
+  curl -s localhost:8080/q/metrics | grep http_request_duration_seconds
+```
+
+**Expected Output** (AnalysisRun):
+```
+Measurements:
+  Phase:           Failed
+  Message:         Canary deployment has critical issues
+                   
+                   Root Cause Analysis:
+                   The canary p95 latency is 250ms, which is 5x the stable baseline (50ms).
+                   The success rate is 99.2% - no errors are present in the logs.
+                   Latency has increased steadily over the analysis window.
+                   
+                   Recommendation: ROLLBACK
+```
+
+### Step 5: Automatic Rollback
+
+**Watch Terminal 1**:
+```
+Name:            demo-app
+Status:          ✖ Degraded
+Message:         RolloutAborted: Metric "ai-deployment-analysis" assessed Failed
+Images:          ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (stable)
+```
+
+**Key Takeaway**:
+
+"A single analysis right after the canary starts would have promoted this version. The regression only shows up in the metrics over time, which is exactly the kind of bug that recurring analysis during a rollout is designed to catch."
+
+---
+
 ## Q&A Talking Points
 
 ### Common Questions
@@ -674,7 +774,7 @@ kubectl argo rollouts promote demo-app -n demo-app --full
 
 ### Timing
 
-The introduction should take 3-5 minutes. The happy path demo should take 8-10 minutes. The failure scenario should take 10-12 minutes. Reserve 5-10 minutes for Q&A. The total presentation should be 25-35 minutes.
+The introduction should take 3-5 minutes. The happy path demo should take 8-10 minutes. The failure scenario should take 10-12 minutes. The latency drift demo should take 5-7 minutes. Reserve 5-10 minutes for Q&A. The total presentation should be 30-45 minutes.
 
 ### Engagement
 

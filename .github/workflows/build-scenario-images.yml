@@ -21,14 +21,22 @@ jobs:
             tag: v1.stable
             null_pointer: "false"
             memory_leak: "false"
+            latency_drift: "false"
           - name: null-pointer-bug
             tag: v2.nullpointer
             null_pointer: "true"
             memory_leak: "false"
+            latency_drift: "false"
           - name: memory-leak
             tag: v3.memoryleak
             null_pointer: "false"
             memory_leak: "true"
+            latency_drift: "false"
+          - name: latency-drift
+            tag: v4.latency
+            null_pointer: "false"
+            memory_leak: "false"
+            latency_drift: "true"
     
     steps:
       - name: Checkout code
@@ -48,6 +56,7 @@ jobs:
           sed -i "s/enable.memory.leak=.*/enable.memory.leak=${{ matrix.scenario.memory_leak }}/" src/main/resources/application.properties
           sed -i "s/enable.connection.leak=.*/enable.connection.leak=false/" src/main/resources/application.properties
           sed -i "s/enable.cpu.spike=.*/enable.cpu.spike=false/" src/main/resources/application.properties
+          sed -i "s/enable.latency.drift=.*/enable.latency.drift=${{ matrix.scenario.latency_drift }}/" src/main/resources/application.properties
           sed -i "s/load.generator.enabled=.*/load.generator.enabled=true/" src/main/resources/application.properties
           echo "Updated application.properties:"
           cat src/main/resources/application.properties | grep "enable\."
@@ -89,4 +98,5 @@ jobs:
           echo "**Configuration:**" >> $GITHUB_STEP_SUMMARY
           echo "- NullPointerException Bug: \`${{ matrix.scenario.null_pointer }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Memory Leak: \`${{ matrix.scenario.memory_leak }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Latency Drift: \`${{ matrix.scenario.latency_drift }}\`" >> $GITHUB_STEP_SUMMARY
 

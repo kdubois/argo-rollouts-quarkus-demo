@@ -29,6 +29,7 @@ The demo application is part of a larger system that brings AI-powered analysis 
 │           │              • v1.stable (99% success)               │
 │           │              • v2.nullpointer (20% NPE failures)     │
 │           │              • v3.memoryleak (gradual degradation)   │
+│           │              • v4.latency (slow-burn latency drift)  │
 │           │                                                      │
 │           │ Managed by                                           │
 │           ▼                                                      │
@@ -84,11 +85,12 @@ When issues are detected, the Kubernetes Agent automatically creates GitHub pull
 
 ### Pre-Built Scenario Images
 
-The application provides three pre-built container images with different behaviors for demonstration purposes:
+The application provides four pre-built container images with different behaviors for demonstration purposes:
 
 - **v1.stable** (`ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable`): Healthy application with 99% success rate
 - **v2.nullpointer** (`ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer`): NullPointerException bug affecting 20% of requests
 - **v3.memoryleak** (`ghcr.io/kdubois/argo-rollouts-quarkus-demo:v3.memoryleak`): Memory leak causing gradual performance degradation
+- **v4.latency** (`ghcr.io/kdubois/argo-rollouts-quarkus-demo:v4.latency`): Progressive latency drift with no errors in logs - a metrics-only regression
 
 **Note**: Bug scenarios are baked into the images at build time via GitHub Actions. Switch scenarios by changing the image tag in your rollout. See [SCENARIOS.md](SCENARIOS.md) for detailed information.
 
@@ -105,14 +107,14 @@ The application provides three pre-built container images with different behavio
 
 The project uses GitHub Actions for automated builds and deployments:
 
-- **Automated Scenario Builds**: Every push to `main` triggers builds of all three scenario images (see `.github/workflows/build-scenario-images.yml`)
+- **Automated Scenario Builds**: Every push to `main` triggers builds of all four scenario images (see `.github/workflows/build-scenario-images.yml`)
 - **Pull Request Validation**: PRs are built and tested automatically
 - **Container Images**: Available at `ghcr.io/kdubois/argo-rollouts-quarkus-demo`
 - **Dependency Management**: Dependabot automatically creates PRs for dependency updates
 
 Container images are tagged with:
-- `v1.stable`, `v2.nullpointer`, `v3.memoryleak` - Scenario-specific images
-- `stable-latest`, `null-pointer-bug-latest`, `memory-leak-latest` - Latest builds of each scenario
+- `v1.stable`, `v2.nullpointer`, `v3.memoryleak`, `v4.latency` - Scenario-specific images
+- `stable-latest`, `null-pointer-bug-latest`, `memory-leak-latest`, `latency-drift-latest` - Latest builds of each scenario
 
 ## Quick Start
 
@@ -169,7 +171,7 @@ Build a native executable Docker image (requires GraalVM):
 docker build -f src/main/docker/Dockerfile.native -t ghcr.io/kdubois/argo-rollouts-quarkus-demo:native .
 ```
 
-**Note**: For scenario-specific images, see the GitHub Actions workflow at `.github/workflows/build-scenario-images.yml` which automatically builds all three scenarios.
+**Note**: For scenario-specific images, see the GitHub Actions workflow at `.github/workflows/build-scenario-images.yml` which automatically builds all four scenarios.
 
 ### Using the Makefile
 
@@ -233,6 +235,9 @@ kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollout
 
 # Deploy memory leak (gradual degradation)
 kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v3.memoryleak -n quarkus-demo
+
+# Deploy latency drift (metrics-only regression)
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v4.latency -n quarkus-demo
 ```
 
 See [SCENARIOS.md](SCENARIOS.md) for detailed information about each scenario.
@@ -266,6 +271,20 @@ kubectl argo rollouts get rollout quarkus-demo -n quarkus-demo --watch
 ```
 
 The AI will detect elevated error rates and automatically rollback the deployment. A GitHub PR will be created with the fix.
+
+### Scenario 3: Metrics-Only Regression
+
+Deploy a version that looks healthy at first and degrades slowly, showing why recurring analysis matters:
+
+```bash
+# Deploy latency drift (slow burn regression, no errors in logs)
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v4.latency -n quarkus-demo
+
+# Watch the analysis
+kubectl argo rollouts get rollout quarkus-demo -n quarkus-demo --watch
+```
+
+The canary adds no delay for the first 20 seconds of pod uptime, then adds 5ms per second of uptime to every request, capped at 250ms. An analysis early in the rollout sees baseline latency and passes. After 30-60 seconds of load the canary p95 latency is 2-5x the stable baseline and the analysis fails. There are no errors and no exceptions - the success rate stays at 99% and the logs stay clean, so only the latency metrics reveal the regression.
 
 ## Monitoring and Observability
 

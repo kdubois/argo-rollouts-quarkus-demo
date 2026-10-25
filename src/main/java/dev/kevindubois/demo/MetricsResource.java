@@ -109,7 +109,9 @@ public class MetricsResource {
             status = successRate < 0.8 ? "degraded" : "recovering";
         }
 
-        // Add bug scenario indicators to status
+        // Add bug scenario indicators to status.
+        // Latency drift is intentionally excluded: that scenario must look healthy
+        // everywhere except in the latency metrics.
         if (scenarioService.isMemoryLeakEnabled() ||
             scenarioService.isConnectionLeakEnabled() ||
             scenarioService.isCpuSpikeEnabled()) {
@@ -150,7 +152,8 @@ public class MetricsResource {
             appVersion,
             scenarioService.isMemoryLeakEnabled(),
             scenarioService.isConnectionLeakEnabled(),
-            scenarioService.isCpuSpikeEnabled()
+            scenarioService.isCpuSpikeEnabled(),
+            scenarioService.isLatencyDriftEnabled()
         );
     }
 
@@ -160,14 +163,16 @@ public class MetricsResource {
         public boolean memoryLeakEnabled;
         public boolean connectionLeakEnabled;
         public boolean cpuSpikeEnabled;
+        public boolean latencyDriftEnabled;
 
         public ScenarioInfo(String scenario, String version, boolean memoryLeakEnabled,
-                           boolean connectionLeakEnabled, boolean cpuSpikeEnabled) {
+                           boolean connectionLeakEnabled, boolean cpuSpikeEnabled, boolean latencyDriftEnabled) {
             this.scenario = scenario;
             this.version = version;
             this.memoryLeakEnabled = memoryLeakEnabled;
             this.connectionLeakEnabled = connectionLeakEnabled;
             this.cpuSpikeEnabled = cpuSpikeEnabled;
+            this.latencyDriftEnabled = latencyDriftEnabled;
         }
     }
 

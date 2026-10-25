@@ -6,10 +6,11 @@ This document explains the simplified container-based approach for demonstrating
 
 - [Overview](#overview)
 - [Architecture](#architecture)
-- [The Three Scenarios](#the-three-scenarios)
+- [The Four Scenarios](#the-four-scenarios)
   - [Scenario 1: Stable Deployment (Happy Path)](#scenario-1-stable-deployment-happy-path)
   - [Scenario 2: NullPointerException Bug (Fixable)](#scenario-2-nullpointerexception-bug-fixable)
   - [Scenario 3: Memory Leak (Non-Fixable)](#scenario-3-memory-leak-non-fixable)
+  - [Scenario 4: Latency Drift (Metrics-Only)](#scenario-4-latency-drift-metrics-only)
 - [Quick Start](#quick-start)
 - [GitOps Workflow](#gitops-workflow)
 - [Demo Flow](#demo-flow)
@@ -24,11 +25,12 @@ This document explains the simplified container-based approach for demonstrating
 
 ### Build Process
 
-The GitHub Actions workflow (`.github/workflows/build-scenario-images.yml`) automatically builds three distinct images on every push to main:
+The GitHub Actions workflow (`.github/workflows/build-scenario-images.yml`) automatically builds four distinct images on every push to main:
 
-1. **v1.stable**: Built with `enable.null.pointer.bug=false` and `enable.memory.leak=false`
-2. **v2.nullpointer**: Built with `enable.null.pointer.bug=true` and `enable.memory.leak=false`
-3. **v3.memoryleak**: Built with `enable.null.pointer.bug=false` and `enable.memory.leak=true`
+1. **v1.stable**: Built with `enable.null.pointer.bug=false`, `enable.memory.leak=false` and `enable.latency.drift=false`
+2. **v2.nullpointer**: Built with `enable.null.pointer.bug=true`, `enable.memory.leak=false` and `enable.latency.drift=false`
+3. **v3.memoryleak**: Built with `enable.null.pointer.bug=false`, `enable.memory.leak=true` and `enable.latency.drift=false`
+4. **v4.latency**: Built with `enable.null.pointer.bug=false`, `enable.memory.leak=false` and `enable.latency.drift=true`
 
 The feature flags are set in `application.properties` **before** the Maven build, so they are compiled into the JAR and cannot be changed at runtime.
 
@@ -45,6 +47,9 @@ kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollout
 
 # Deploy memory leak
 kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v3.memoryleak -n quarkus-demo
+
+# Deploy latency drift
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v4.latency -n quarkus-demo
 ```
 
 This approach ensures:
@@ -60,7 +65,7 @@ This approach ensures:
 The container-based approach simplifies progressive delivery demonstrations by:
 
 - **Built-in Load Generator**: Each container generates 50 requests/second automatically, eliminating the need for external load testing tools
-- **Pre-built Scenario Images**: Three distinct container images with different behaviors (stable, null pointer bug, memory leak)
+- **Pre-built Scenario Images**: Four distinct container images with different behaviors (stable, null pointer bug, memory leak, latency drift)
 - **Automated CI/CD**: GitHub Actions workflow builds all scenario images on every push
 - **GitOps-Ready**: Kustomize overlays enable easy deployment switching via git commits
 - **AI-Powered Analysis**: Kubernetes agent analyzes logs and metrics to make intelligent decisions
@@ -121,13 +126,14 @@ The container-based approach simplifies progressive delivery demonstrations by:
 
 1. **Quarkus Application** ([src/main/java/dev/kevindubois/demo/](src/main/java/dev/kevindubois/demo/))
    - `LoadGeneratorService.java`: Built-in load generator (50 req/sec)
-   - `DemoScenarioService.java`: Simulates bugs (NPE, memory leak)
+   - `DemoScenarioService.java`: Simulates bugs (NPE, memory leak, latency drift)
    - `UserResource.java`: REST endpoint with optional NPE bug
 
 2. **Container Images** (Built by [GitHub Actions](.github/workflows/build-scenario-images.yml))
    - `v1.stable`: Healthy application
    - `v2.nullpointer`: NullPointerException bug (20% of requests)
    - `v3.memoryleak`: Memory leak (1MB per request)
+   - `v4.latency`: Progressive latency drift (metrics-only regression)
 
 3. **Kustomize Overlays** ([progressive-delivery/workloads/quarkus-rollouts-demo/](../progressive-delivery/workloads/quarkus-rollouts-demo/))
    - `base/`: Common resources (rollout, services, analysis template)
@@ -140,7 +146,7 @@ The container-based approach simplifies progressive delivery demonstrations by:
 
 ---
 
-## The Three Scenarios
+## The Four Scenarios
 
 ### Scenario 1: Stable Deployment (Happy Path)
 
@@ -254,6 +260,51 @@ ERROR CRITICAL: Application struggling. Response times 6x baseline. Heap usage: 
 
 ---
 
+### Scenario 4: Latency Drift (Metrics-Only)
+
+**Image**: `ghcr.io/kdubois/argo-rollouts-quarkus-demo:v4.latency`
+
+**Behavior**:
+- ✅ 99% success rate - no errors, no exceptions
+- ✅ Clean logs - no warnings, no stack traces
+- ✅ Status endpoint reports "healthy"
+- ⚠️ Response latency drifts upward over time: no added delay for the first 20 seconds, then +5ms per second of pod uptime, capped at 250ms
+
+**Bug Details**:
+```java
+// DemoScenarioService.java
+// Delay grows with pod uptime after a 20 second grace period
+long delayMs = Math.min((elapsedSeconds - 20) * 5, 250);
+Thread.sleep(delayMs); // Slow responses, never failures
+```
+
+**Latency Trajectory** (stable baseline p95 is ~50ms):
+
+| Canary uptime | Added delay | Canary p95 | vs stable |
+|---------------|-------------|------------|-----------|
+| 0-20s         | 0ms         | ~50ms      | 1x        |
+| 25s           | 25ms        | ~75ms      | 1.5x      |
+| 30s           | 50ms        | ~100ms     | 2x        |
+| 45s           | 125ms       | ~175ms     | 3.5x      |
+| 60s           | 200ms       | ~250ms     | 5x        |
+| 70s+          | 250ms (cap) | ~300ms     | 6x        |
+
+**AI Analysis Result**: ✅ **PASS** early in the rollout, ❌ **FAIL** after 30-60 seconds of load
+
+**Timeline**:
+- 0:00 - Rollout starts, 10% traffic to canary
+- 0:00-0:20 - Canary latency is at the stable baseline (grace period)
+- 0:10 - Early AI analysis: canary p95 matches stable, **PASS**
+- 0:20 - Delay starts growing (+5ms per second)
+- 0:30-0:60 - Later AI analyses: canary p95 is 2-5x stable, **FAIL**
+- Rollout aborted
+
+**Expected Outcome**: The first analysis passes, a later analysis fails the p95 threshold (canary p95 > 1.5x stable) and aborts the rollout
+
+**Demo Use Case**: Show why a single early analysis is not enough. A slow-burn regression is invisible in logs and only detectable by comparing latency metrics over time - this is the case for recurring analysis during a rollout.
+
+---
+
 ## Quick Start
 
 ### Prerequisites
@@ -283,6 +334,11 @@ kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollout
 kubectl apply -k progressive-delivery/workloads/quarkus-rollouts-demo/overlays/scenario-3-memory-leak/
 # Or directly update the image:
 kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v3.memoryleak -n quarkus-demo
+```
+
+**Scenario 4 (Latency Drift)**:
+```bash
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v4.latency -n quarkus-demo
 ```
 
 ### Watch the Rollout
@@ -390,9 +446,9 @@ At 50 seconds, AI makes a decision:
 
 ## Demo Flow
 
-### Complete Demo Script (All Three Scenarios)
+### Complete Demo Script (All Four Scenarios)
 
-**Total Time**: ~6 minutes
+**Total Time**: ~8 minutes
 
 #### Part 1: Scenario 1 - Happy Path (2 minutes)
 
@@ -471,6 +527,38 @@ kubectl argo rollouts get rollout quarkus-demo -n quarkus-demo
 # Expected: Issue created recommending heap dump analysis
 ```
 
+#### Part 4: Scenario 4 - Latency Drift (2 minutes)
+
+```bash
+# 1. Deploy latency drift version
+kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v4.latency -n quarkus-demo
+
+# 2. Watch rollout
+kubectl argo rollouts get rollout quarkus-demo -n quarkus-demo --watch
+
+# 3. Show that the canary logs are clean
+kubectl logs -n quarkus-demo -l app=quarkus-demo,role=canary --tail=30
+
+# Expected: No errors, no exceptions - the canary looks healthy
+
+# 4. Show the first analysis result
+kubectl get analysisrun -n quarkus-demo
+
+# Expected: First analysis passes (canary latency still at baseline,
+# the 20 second grace period has not elapsed yet)
+
+# 5. Wait for the next analysis iterations (30-60s)
+kubectl get analysisrun -n quarkus-demo -w
+
+# Expected: A later analysis fails - canary p95 latency now exceeds
+# 1.5x the stable baseline while success rate stays at 99%
+
+# 6. Show rollout aborted
+kubectl argo rollouts get rollout quarkus-demo -n quarkus-demo
+
+# Expected: Status: Degraded, Message: "Analysis Failed"
+```
+
 ### Key Demo Points
 
 1. **Built-in Load**: No need to run external load tests
@@ -478,6 +566,7 @@ kubectl argo rollouts get rollout quarkus-demo -n quarkus-demo
 3. **Smart Decisions**: AI distinguishes between fixable (PR) and non-fixable (Issue) bugs
 4. **Automatic Remediation**: PRs include code fixes, Issues include investigation steps
 5. **GitOps-Driven**: All changes via git commits, no manual kubectl commands needed
+6. **Recurring Analysis**: The latency drift scenario passes the first analysis and fails later ones, showing why analysis must repeat throughout a rollout
 
 ---
 
@@ -501,14 +590,22 @@ matrix:
       tag: v1.stable
       null_pointer: "false"
       memory_leak: "false"
+      latency_drift: "false"
     - name: null-pointer-bug
       tag: v2.nullpointer
       null_pointer: "true"
       memory_leak: "false"
+      latency_drift: "false"
     - name: memory-leak
       tag: v3.memoryleak
       null_pointer: "false"
       memory_leak: "true"
+      latency_drift: "false"
+    - name: latency-drift
+      tag: v4.latency
+      null_pointer: "false"
+      memory_leak: "false"
+      latency_drift: "true"
 ```
 
 **Build Process**:
@@ -552,6 +649,14 @@ sed -i 's/enable.memory.leak=.*/enable.memory.leak=true/' src/main/resources/app
 ./mvnw clean package -DskipTests
 docker build -f src/main/docker/Dockerfile.jvm \
   -t ghcr.io/kdubois/argo-rollouts-quarkus-demo:v3.memoryleak .
+
+# Build Scenario 4 (Latency Drift)
+sed -i 's/enable.null.pointer.bug=.*/enable.null.pointer.bug=false/' src/main/resources/application.properties
+sed -i 's/enable.memory.leak=.*/enable.memory.leak=false/' src/main/resources/application.properties
+sed -i 's/enable.latency.drift=.*/enable.latency.drift=true/' src/main/resources/application.properties
+./mvnw clean package -DskipTests
+docker build -f src/main/docker/Dockerfile.jvm \
+  -t ghcr.io/kdubois/argo-rollouts-quarkus-demo:v4.latency .
 ```
 
 ### Image Registry
@@ -559,10 +664,10 @@ docker build -f src/main/docker/Dockerfile.jvm \
 Images are hosted on GitHub Container Registry (ghcr.io):
 - Repository: `ghcr.io/kdubois/argo-rollouts-quarkus-demo`
 - Public visibility
-- Tags: `v1.stable`, `v2.nullpointer`, `v3.memoryleak`
+- Tags: `v1.stable`, `v2.nullpointer`, `v3.memoryleak`, `v4.latency`
 - Automated builds via GitHub Actions (see `.github/workflows/build-scenario-images.yml`)
 
-**Important**: Bug scenarios are **baked into the container images** at build time by setting the feature flags in `application.properties` before building. The GitHub Actions workflow automatically builds all three scenario images on every push to main.
+**Important**: Bug scenarios are **baked into the container images** at build time by setting the feature flags in `application.properties` before building. The GitHub Actions workflow automatically builds all four scenario images on every push to main.
 
 ---
 
@@ -717,7 +822,7 @@ The container-based approach provides:
 
 ✅ **Simplified Demos**: No external tools needed, everything self-contained  
 ✅ **Fast Analysis**: Built-in load ensures AI has data within 40 seconds  
-✅ **Realistic Scenarios**: Three distinct behaviors (stable, NPE, memory leak)  
+✅ **Realistic Scenarios**: Four distinct behaviors (stable, NPE, memory leak, latency drift)  
 ✅ **Automated CI/CD**: GitHub Actions builds all images automatically  
 ✅ **GitOps-Ready**: Kustomize overlays enable easy scenario switching  
 ✅ **Smart Remediation**: AI creates PRs for fixable bugs, Issues for complex problems  

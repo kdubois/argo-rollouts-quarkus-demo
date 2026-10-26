@@ -19,21 +19,29 @@ jobs:
         scenario:
           - name: stable
             tag: v1.stable
+            version: "1.0.0"
+            scenario_mode: success
             null_pointer: "false"
             memory_leak: "false"
             latency_drift: "false"
           - name: null-pointer-bug
             tag: v2.nullpointer
+            version: "2.0.0"
+            scenario_mode: null-pointer
             null_pointer: "true"
             memory_leak: "false"
             latency_drift: "false"
           - name: memory-leak
             tag: v3.memoryleak
+            version: "3.0.0"
+            scenario_mode: memory-leak
             null_pointer: "false"
             memory_leak: "true"
             latency_drift: "false"
           - name: latency-drift
             tag: v4.latency
+            version: "4.0.0"
+            scenario_mode: latency-drift
             null_pointer: "false"
             memory_leak: "false"
             latency_drift: "true"
@@ -57,10 +65,12 @@ jobs:
           sed -i "s/enable.connection.leak=.*/enable.connection.leak=false/" src/main/resources/application.properties
           sed -i "s/enable.cpu.spike=.*/enable.cpu.spike=false/" src/main/resources/application.properties
           sed -i "s/enable.latency.drift=.*/enable.latency.drift=${{ matrix.scenario.latency_drift }}/" src/main/resources/application.properties
+          sed -i "s/scenario.mode=.*/scenario.mode=${{ matrix.scenario.scenario_mode }}/" src/main/resources/application.properties
+          sed -i "s/app.version=.*/app.version=${{ matrix.scenario.version }}/" src/main/resources/application.properties
           sed -i "s/load.generator.enabled=.*/load.generator.enabled=true/" src/main/resources/application.properties
           echo "Updated application.properties:"
           cat src/main/resources/application.properties | grep "enable\."
-          cat src/main/resources/application.properties | grep "load.generator.enabled"
+          cat src/main/resources/application.properties | grep -E "scenario.mode|app.version|load.generator.enabled"
       
       - name: Build with Maven
         run: ./mvnw clean package -DskipTests

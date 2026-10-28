@@ -9,6 +9,7 @@
 - [Happy Path Demo](#happy-path-demo)
 - [Failure Scenario Demo](#failure-scenario-demo)
 - [Latency Drift Demo](#latency-drift-demo)
+- [Uncertainty Pause Demo](#uncertainty-pause-demo)
 - [Q&A Talking Points](#qa-talking-points)
 - [Reset Instructions](#reset-instructions)
 - [Troubleshooting](#troubleshooting)
@@ -535,6 +536,82 @@ Images:          ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (stable)
 **Key Takeaway**:
 
 "A single analysis right after the canary starts would have promoted this version. The regression only shows up in the metrics over time, which is exactly the kind of bug that recurring analysis during a rollout is designed to catch."
+
+---
+
+## Uncertainty Pause Demo
+
+**Duration**: 3-4 minutes
+
+### Scenario Overview
+
+"So far the agent made every call on its own: promote or rollback. But what happens when the evidence is thin and the agent simply is not confident? Instead of guessing, it can hold the rollout and hand the decision to a human. That is the uncertainty pause gate — opt-in, off by default, and scoped to a single namespace."
+
+### Step 1: Enable the Pause Gate
+
+**Talking Points**:
+
+"The gate is two settings in the AnalysisTemplate. I'm setting the threshold to 95 — higher than any of our scenarios score, so the very next analysis trips it. In a real deployment you would set it around 50 and only genuinely uncertain analyses would hold."
+
+```bash
+# In the progressive-delivery repo: uncomment and set the gate in
+# workloads/quarkus-rollouts-demo/base/analysistemplate-ai-agent.yaml:
+#   pauseOnUncertainty: true
+#   uncertaintyThreshold: 95
+git add . && git commit -m "demo: enable the uncertainty pause gate" && git push
+
+# Wait for Argo CD to sync, then verify
+kubectl get analysistemplate ai-analysis-agent -n demo-app -o yaml | grep -A2 uncertainty
+```
+
+### Step 2: Trigger a Rollout and Watch It Hold
+
+**Watch Terminal 1**:
+```bash
+kubectl set image rollout/demo-app demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable -n demo-app
+oc argo rollouts get rollout demo-app -n demo-app --watch
+```
+
+**Expected Output**:
+```
+Name:            demo-app
+Status:          ॥ Paused
+Message:         ManuallyPaused
+Images:          ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (stable)
+```
+
+**Watch the Dashboard**: the rollout phase shows Paused and a purple PAUSE event appears in the activity feed: "Rollout paused for human review".
+
+**Talking Points**:
+
+"Notice what did not happen: the analysis did not fail. It promoted — the canary is healthy — but with confidence below the threshold. The measurement is successful and the pause is what holds the rollout. A rollback would have aborted; this just holds."
+
+### Step 3: Show Why It Paused
+
+```bash
+# The paused rollout name is recorded in the measurement metadata
+kubectl get analysisrun -n demo-app -o yaml | grep -B2 pausedRollout
+```
+
+**Expected Output**:
+```
+    pausedRollout: demo-app
+```
+
+### Step 4: The Human Decides
+
+```bash
+# Resume the rollout — you are overriding the analysis
+oc argo rollouts unpause demo-app -n demo-app
+```
+
+**Talking Points**:
+
+"Unpausing is a decision: it says I reviewed this and I am overriding the analysis. And the gate is honest about that — if the next analysis is still below the threshold, it pauses again. Each measurement applies the policy. To turn it off, revert the template change and push."
+
+**Key Takeaway**:
+
+"Autonomous does not have to mean unsupervised. The system can run fully on its own, and an operator can insert themselves at the exact decision point where the AI is unsure — without touching the rollout flow itself."
 
 ---
 

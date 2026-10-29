@@ -132,7 +132,7 @@ function updateRolloutProgress(rolloutData) {
             } else if (phase === 'Paused') {
                 message = 'Paused for AI analysis';
             } else if (phase === 'Degraded') {
-                message = 'Issues detected - degraded';
+                message = 'Analysis failed \u2014 rolled back to stable';
             } else {
                 message = 'Monitoring deployment';
             }
@@ -155,6 +155,12 @@ function updateRolloutProgress(rolloutData) {
             isPastStage = steps.every(s => s < currentStepIndex);
         }
 
+        if (phase === 'Degraded') {
+            // rolled back: the canary is gone and no stage is active —
+            // currentStepIndex resets to 0, which would otherwise light up
+            // the early pips again
+            return;
+        }
         if (isPastStage || weight < canaryWeight) {
             pip.classList.add('completed');
         } else if (isCurrentStage || (weight === canaryWeight && (currentStepIndex === null || currentStepIndex === undefined))) {

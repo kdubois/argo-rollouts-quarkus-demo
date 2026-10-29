@@ -248,15 +248,57 @@ public class RolloutStatusResource {
             
             // Extract error Logs from failed metrics
             String errorLog = extractErrorLog(analysisStatus);
-            
+
+            // Which measurement of the recurring analysis is running (the
+            // template runs two: early at ~10% weight, later at ~60%)
+            int current = countMeasurements(analysisStatus);
+            int total = expectedMeasurementCount(latestAnalysisRun, current);
+
             Map<String, Object> metadata = (Map<String, Object>) latestAnalysisRun.getAdditionalProperties().get("metadata");
             String analysisRunName = metadata != null ? (String) metadata.get("name") : "unknown";
-            Log.debugf("Found AnalysisRun %s: phase=%s, message=%s, successful=%s", analysisRunName, phase, message, successful);
-            return new AnalysisInfo(phase, message, successful, errorLog);
+            Log.debugf("Found AnalysisRun %s: phase=%s, message=%s, successful=%s, measurement=%d/%d",
+                    analysisRunName, phase, message, successful, current, total);
+            return new AnalysisInfo(phase, message, successful, errorLog, current > 0 ? current : null,
+                    total > 0 ? total : null);
 
         } catch (Exception e) {
             Log.error("Error fetching analysis info", e);
-            return new AnalysisInfo("Error", "Error fetching analysis: " + e.getMessage(), null, null);
+            return new AnalysisInfo("Error", "Error fetching analysis: " + e.getMessage(), null, null, null, null);
+        }
+    }
+
+
+    /** Number of measurements recorded so far in the latest AnalysisRun. */
+    @SuppressWarnings("unchecked")
+    private int countMeasurements(Map<String, Object> analysisStatus) {
+        try {
+            Object metricResults = analysisStatus.get("metricResults");
+            if (!(metricResults instanceof List<?> results) || results.isEmpty()) {
+                return 0;
+            }
+            Object measurements = ((Map<String, Object>) results.get(0)).get("measurements");
+            return measurements instanceof List<?> list ? list.size() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /** The configured measurement count from the AnalysisRun spec (count: 2). */
+    @SuppressWarnings("unchecked")
+    private int expectedMeasurementCount(GenericKubernetesResource analysisRun, int observed) {
+        try {
+            Map<String, Object> spec = (Map<String, Object>) analysisRun.getAdditionalProperties().get("spec");
+            if (spec == null) {
+                return observed;
+            }
+            Object metrics = spec.get("metrics");
+            if (!(metrics instanceof List<?> list) || list.isEmpty()) {
+                return observed;
+            }
+            Object count = ((Map<String, Object>) list.get(0)).get("count");
+            return count instanceof Number n ? n.intValue() : observed;
+        } catch (Exception e) {
+            return observed;
         }
     }
 

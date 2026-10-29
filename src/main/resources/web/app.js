@@ -236,12 +236,15 @@ function updateDecisionCard(analysis, rolloutPhase) {
         return;
     }
 
-    phaseBadge.textContent = analysis.phase || 'Unknown';
+    const measurement = (analysis.currentMeasurement && analysis.totalMeasurements)
+        ? '  \u00b7  Measurement ' + analysis.currentMeasurement + ' of ' + analysis.totalMeasurements
+        : '';
+    phaseBadge.textContent = (analysis.phase || 'Unknown') + measurement;
 
     if (analysis.phase === 'Running') {
         card.classList.add('running');
         verdictIcon.textContent = '\u25B6';
-        verdictText.textContent = 'Analysis in progress...';
+        verdictText.textContent = 'Analysis in progress' + (measurement ? ' (' + analysis.currentMeasurement + '/' + analysis.totalMeasurements + ')' : '') + '...';
     } else if (analysis.successful === true) {
         card.classList.add('promote');
         verdictIcon.textContent = '\u2714';

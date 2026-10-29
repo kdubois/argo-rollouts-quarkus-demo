@@ -6,12 +6,14 @@ public record AnalysisInfo(
     Boolean successful,
     String errorLog,
     Integer currentMeasurement,
-    Integer totalMeasurements
+    Integer totalMeasurements,
+    String lastMeasurementPhase
 ) {
     public static AnalysisInfo notStarted() {
         return new AnalysisInfo(
             "Pending",
             "Analysis has not started yet",
+            null,
             null,
             null,
             null,

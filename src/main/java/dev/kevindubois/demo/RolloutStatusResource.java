@@ -253,17 +253,18 @@ public class RolloutStatusResource {
             // template runs two: early at ~10% weight, later at ~60%)
             int current = countMeasurements(analysisStatus);
             int total = expectedMeasurementCount(latestAnalysisRun, current);
+            String lastMeasurementPhase = lastMeasurementPhase(analysisStatus);
 
             Map<String, Object> metadata = (Map<String, Object>) latestAnalysisRun.getAdditionalProperties().get("metadata");
             String analysisRunName = metadata != null ? (String) metadata.get("name") : "unknown";
             Log.debugf("Found AnalysisRun %s: phase=%s, message=%s, successful=%s, measurement=%d/%d",
                     analysisRunName, phase, message, successful, current, total);
             return new AnalysisInfo(phase, message, successful, errorLog, current > 0 ? current : null,
-                    total > 0 ? total : null);
+                    total > 0 ? total : null, lastMeasurementPhase);
 
         } catch (Exception e) {
             Log.error("Error fetching analysis info", e);
-            return new AnalysisInfo("Error", "Error fetching analysis: " + e.getMessage(), null, null, null, null);
+            return new AnalysisInfo("Error", "Error fetching analysis: " + e.getMessage(), null, null, null, null, null);
         }
     }
 
@@ -280,6 +281,25 @@ public class RolloutStatusResource {
             return measurements instanceof List<?> list ? list.size() : 0;
         } catch (Exception e) {
             return 0;
+        }
+    }
+
+    /** Phase of the most recent recorded measurement (Running/Succeeded/Failed). */
+    @SuppressWarnings("unchecked")
+    private String lastMeasurementPhase(Map<String, Object> analysisStatus) {
+        try {
+            Object metricResults = analysisStatus.get("metricResults");
+            if (!(metricResults instanceof List<?> results) || results.isEmpty()) {
+                return null;
+            }
+            Object measurements = ((Map<String, Object>) results.get(0)).get("measurements");
+            if (!(measurements instanceof List<?> list) || list.isEmpty()) {
+                return null;
+            }
+            Object phase = ((Map<String, Object>) list.get(list.size() - 1)).get("phase");
+            return phase != null ? phase.toString() : null;
+        } catch (Exception e) {
+            return null;
         }
     }
 

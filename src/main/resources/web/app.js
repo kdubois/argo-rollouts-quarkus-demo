@@ -243,10 +243,23 @@ function updateDecisionCard(analysis, rolloutPhase) {
         : '';
     phaseBadge.textContent = (analysis.phase || 'Unknown') + measurement;
 
-    if (analysis.phase === 'Running') {
+    const hasMoreMeasurements = analysis.currentMeasurement && analysis.totalMeasurements
+        && analysis.currentMeasurement < analysis.totalMeasurements;
+
+    if (analysis.phase === 'Running' && analysis.lastMeasurementPhase === 'Succeeded' && hasMoreMeasurements) {
+        // measurement N passed, waiting on the interval/step before N+1
+        card.classList.add('promote');
+        verdictIcon.textContent = '\u2714';
+        verdictText.textContent = 'Canary passed analysis ' + analysis.currentMeasurement
+            + ' of ' + analysis.totalMeasurements + ' \u2014 next analysis run pending';
+    } else if (analysis.phase === 'Running') {
         card.classList.add('running');
         verdictIcon.textContent = '\u25B6';
         verdictText.textContent = 'Analysis in progress' + (measurement ? ' (' + analysis.currentMeasurement + '/' + analysis.totalMeasurements + ')' : '') + '...';
+    } else if (analysis.successful === true && rolloutPhase !== 'Healthy') {
+        card.classList.add('promote');
+        verdictIcon.textContent = '\u2714';
+        verdictText.textContent = 'Canary passed analysis \u2014 promoting to stable';
     } else if (analysis.successful === true) {
         card.classList.add('promote');
         verdictIcon.textContent = '\u2714';

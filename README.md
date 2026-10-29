@@ -402,3 +402,16 @@ For questions or issues:
 - Consult the related project documentation
 
 ---
+
+## Deployment flow
+
+Merging to `main` builds all scenario images and additionally tags the stable
+build with an immutable `stable-<commit sha>` tag. CI then opens a PR in the
+[progressive-delivery](https://github.com/kdubois/progressive-delivery) repo
+pointing the demo rollout at that build — merge the PR and Argo CD rolls it
+out through the canary analysis. Scenario switching (`v2.nullpointer`,
+`v3.memoryleak`, …) stays a one-line manifest edit.
+
+The manifest PR needs the `PROGRESSIVE_DELIVERY_TOKEN` repo secret: a token
+with contents read/write and pull-request write access to
+`kdubois/progressive-delivery`.

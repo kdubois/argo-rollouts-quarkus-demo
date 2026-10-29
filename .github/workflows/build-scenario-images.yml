@@ -11,6 +11,11 @@ permissions:
   contents: read
   packages: write
 
+env:
+  # The stable scenario image also gets a unique tag per commit; merging the
+  # manifest PR that CI opens deploys exactly that build through GitOps.
+  STABLE_VERSION_TAG: stable-${{ github.sha }}
+
 jobs:
   build-scenarios:
     runs-on: ubuntu-latest
@@ -86,13 +91,21 @@ jobs:
         run: |
           echo "Building Docker image for scenario: ${{ matrix.scenario.name }}"
           IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/argo-rollouts-quarkus-demo"
-          docker build -f src/main/docker/Dockerfile.jvm \
-            -t ${IMAGE_NAME}:${{ matrix.scenario.tag }} \
-            -t ${IMAGE_NAME}:${{ matrix.scenario.name }}-latest .
+          TAGS="-t ${IMAGE_NAME}:${{ matrix.scenario.tag }} -t ${IMAGE_NAME}:${{ matrix.scenario.name }}-latest"
+          # the stable build also carries the unique version tag the
+          # manifest PR points at, so deploys are immutable and traceable
+          if [ "${{ matrix.scenario.name }}" = "stable" ]; then
+            TAGS="$TAGS -t ${IMAGE_NAME}:${{ env.STABLE_VERSION_TAG }}"
+          fi
+          docker build -f src/main/docker/Dockerfile.jvm $TAGS .
           
           echo "Pushing images to GitHub Container Registry..."
-          docker push ${IMAGE_NAME}:${{ matrix.scenario.tag }}
-          docker push ${IMAGE_NAME}:${{ matrix.scenario.name }}-latest
+          for t in ${{ matrix.scenario.tag }} ${{ matrix.scenario.name }}-latest; do
+            docker push ${IMAGE_NAME}:$t
+          done
+          if [ "${{ matrix.scenario.name }}" = "stable" ]; then
+            docker push ${IMAGE_NAME}:${{ env.STABLE_VERSION_TAG }}
+          fi
           
           echo "Successfully pushed images for scenario: ${{ matrix.scenario.name }}"
       
@@ -104,9 +117,52 @@ jobs:
           echo "**Images pushed:**" >> $GITHUB_STEP_SUMMARY
           echo "- \`${IMAGE_NAME}:${{ matrix.scenario.tag }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`${IMAGE_NAME}:${{ matrix.scenario.name }}-latest\`" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ matrix.scenario.name }}" = "stable" ]; then
+            echo "- \`${IMAGE_NAME}:${{ env.STABLE_VERSION_TAG }}\` (immutable, deployed via the manifest PR)" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Configuration:**" >> $GITHUB_STEP_SUMMARY
           echo "- NullPointerException Bug: \`${{ matrix.scenario.null_pointer }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Memory Leak: \`${{ matrix.scenario.memory_leak }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Latency Drift: \`${{ matrix.scenario.latency_drift }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # Opens a PR in the progressive-delivery repo pointing the demo rollout at
+  # the immutable stable image built above. Merge it and Argo CD rolls the new
+  # build out through the canary analysis — the full GitOps loop.
+  # Requires the PROGRESSIVE_DELIVERY_TOKEN secret: a PAT with repo access to
+  # kdubois/progressive-delivery (contents read/write, pull requests write).
+  update-manifest:
+    runs-on: ubuntu-latest
+    needs: build-scenarios
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout progressive-delivery
+        uses: actions/checkout@v7
+        with:
+          repository: kdubois/progressive-delivery
+          token: ${{ secrets.PROGRESSIVE_DELIVERY_TOKEN }}
+
+      - name: Update the demo rollout image
+        run: |
+          IMAGE="ghcr.io/kdubois/argo-rollouts-quarkus-demo:${{ env.STABLE_VERSION_TAG }}"
+          sed -i "s|image: ghcr.io/kdubois/argo-rollouts-quarkus-demo:[^ ]*|image: ${IMAGE}|" \
+            workloads/quarkus-rollouts-demo/base/rollout.yaml
+          grep "image: ${IMAGE}" workloads/quarkus-rollouts-demo/base/rollout.yaml
+
+      - name: Open manifest PR
+        env:
+          GH_TOKEN: ${{ secrets.PROGRESSIVE_DELIVERY_TOKEN }}
+        run: |
+          BRANCH="demo-${{ github.sha }}"
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git checkout -b "$BRANCH"
+          git add workloads/quarkus-rollouts-demo/base/rollout.yaml
+          git commit -m "Deploy demo build ${{ github.sha }}"
+          git push origin "$BRANCH"
+          gh pr create --title "Deploy demo build ${{ github.sha }}" \
+            --body "Automated manifest update from kdubois/argo-rollouts-quarkus-demo@${{ github.sha }}.
+
+          Merging this PR deploys the stable image \`stable-${{ github.sha }}\` through the canary rollout with AI analysis." \
+            --head "$BRANCH"
 

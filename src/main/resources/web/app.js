@@ -111,7 +111,9 @@ function updateRolloutProgress(rolloutData) {
         revertRequestsBox();
     }
     lastRolloutPhase = phase;
-    const canaryWeight = rolloutData.canaryWeight || 0;
+    // a Degraded rollout has rolled back: the canary serves no traffic,
+    // even while the status still reports the last step's weight
+    const canaryWeight = phase === 'Degraded' ? 0 : (rolloutData.canaryWeight || 0);
     const currentStepIndex = rolloutData.currentStepIndex;
 
     const badge = document.getElementById('rolloutStatusBadge');
@@ -166,7 +168,7 @@ function updateRolloutProgress(rolloutData) {
 }
 
 function updateTrafficDistribution(rolloutData, versionMetrics) {
-    const canaryWeight = rolloutData.canaryWeight ?? 0;
+    const canaryWeight = rolloutData.phase === 'Degraded' ? 0 : (rolloutData.canaryWeight ?? 0);
     const stableWeight = 100 - canaryWeight;
 
     const stableSegment = document.getElementById('stableSegment');
@@ -620,10 +622,8 @@ function pollSandbox() {
             }
         })
         .catch(() => {
-            // no active sandbox: keep showing whatever ended, then revert
-            if (sandboxName && sandboxDone && !sandboxRevertTimer) {
-                sandboxRevertTimer = setTimeout(revertRequestsBox, 15000);
-            }
+            // no active sandbox: leave the finished log visible until the
+            // next rollout starts (phase transition clears it)
         });
 }
 

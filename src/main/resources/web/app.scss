@@ -1373,3 +1373,64 @@ body.projector-mode .stage-pip.paused .pip-label {
         height: 1px;
     }
 }
+
+// === AI Fix Stream (replaces the live-requests box while a remediation sandbox runs) ===
+.agent-stream {
+    flex: 1;
+    min-height: 100px;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--line-soft);
+    background: #0a101c;
+    padding: 8px 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.66rem;
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.agent-stream::-webkit-scrollbar {
+    width: 6px;
+}
+
+.agent-stream::-webkit-scrollbar-thumb {
+    background: #24324a;
+    border-radius: 3px;
+}
+
+.stream-line {
+    display: flex;
+    gap: 7px;
+    align-items: baseline;
+    animation: stream-in 0.25s ease-out;
+}
+
+@keyframes stream-in {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.stream-icon {
+    flex-shrink: 0;
+    width: 14px;
+    text-align: center;
+    opacity: 0.9;
+}
+
+.stream-line.tool .stream-icon { color: #f5a97f; }
+.stream-line.agent .stream-icon { color: #a6da95; }
+.stream-line.wrapper .stream-icon { color: #8ba3cb; }
+.stream-line.result .stream-icon { color: #ed8796; }
+
+.stream-text {
+    color: #b8c7e0;
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+
+.stream-line.tool .stream-text { color: #f5a97f; }
+.stream-line.agent .stream-text { color: #a6da95; }
+.stream-line.wrapper .stream-text { color: #8ba3cb; font-style: italic; }
+.stream-line.result .stream-text { color: #ed8796; font-weight: bold; }

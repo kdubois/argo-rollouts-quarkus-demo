@@ -656,4 +656,114 @@ function init() {
     setInterval(updateDashboard, 2000);
     loadActivityHistory();
     initActivityStream();
+    initSandboxStream();
+}
+
+// === AI FIX STREAM ===
+// While a remediation sandbox runs, the live-requests box shows the coding
+// agent's activity instead. The requests themselves keep flowing — only the
+// visualization swaps.
+let sandboxName = null;
+let sandboxNextLine = 0;
+let sandboxDone = false;
+let sandboxRevertTimer = null;
+
+function initSandboxStream() {
+    setInterval(pollSandbox, 2000);
+}
+
+function pollSandbox() {
+    fetch('/api/sandbox/active')
+        .then(r => {
+            if (!r.ok) throw new Error('none');
+            return r.json();
+        })
+        .then(active => {
+            if (active.name && active.name !== sandboxName) {
+                startSandboxStream(active.name);
+            } else if (active.name && !sandboxDone) {
+                fetchSandboxLog();
+            }
+        })
+        .catch(() => {
+            // no active sandbox: keep showing whatever ended, then revert
+            if (sandboxName && sandboxDone && !sandboxRevertTimer) {
+                sandboxRevertTimer = setTimeout(revertRequestsBox, 15000);
+            }
+        });
+}
+
+function startSandboxStream(name) {
+    sandboxName = name;
+    sandboxNextLine = 0;
+    sandboxDone = false;
+    clearTimeout(sandboxRevertTimer);
+    sandboxRevertTimer = null;
+
+    const box = document.getElementById('requestVisualization');
+    const stream = document.getElementById('agentStream');
+    const title = document.getElementById('requestsTitle');
+    const legend = document.getElementById('requestLegend');
+    if (box) box.style.display = 'none';
+    if (legend) legend.style.display = 'none';
+    if (stream) {
+        stream.innerHTML = '';
+        stream.style.display = 'flex';
+    }
+    if (title) title.textContent = 'AI Fix in Progress';
+    fetchSandboxLog();
+}
+
+function fetchSandboxLog() {
+    if (!sandboxName) return;
+    fetch('/api/sandbox/' + sandboxName + '/log?after=' + sandboxNextLine)
+        .then(r => r.json())
+        .then(data => {
+            (data.lines || []).forEach(line => appendStreamLine(line));
+            sandboxNextLine = data.next || sandboxNextLine;
+            if (data.done) {
+                sandboxDone = true;
+                const title = document.getElementById('requestsTitle');
+                if (title) title.textContent = 'AI Fix Complete';
+            }
+        })
+        .catch(err => console.debug('Sandbox log unavailable:', err.message));
+}
+
+function appendStreamLine(line) {
+    const stream = document.getElementById('agentStream');
+    if (!stream) return;
+    const icons = { tool: '⚙', agent: '💬', wrapper: '›', result: '✔' };
+    const div = document.createElement('div');
+    div.className = 'stream-line ' + line.type;
+    const icon = document.createElement('span');
+    icon.className = 'stream-icon';
+    icon.textContent = icons[line.type] || '·';
+    const text = document.createElement('span');
+    text.className = 'stream-text';
+    text.textContent = line.text;
+    div.appendChild(icon);
+    div.appendChild(text);
+    stream.appendChild(div);
+    while (stream.children.length > 40) {
+        stream.removeChild(stream.firstChild);
+    }
+    stream.scrollTop = stream.scrollHeight;
+}
+
+function revertRequestsBox() {
+    sandboxName = null;
+    sandboxNextLine = 0;
+    sandboxRevertTimer = null;
+    const box = document.getElementById('requestVisualization');
+    const stream = document.getElementById('agentStream');
+    const title = document.getElementById('requestsTitle');
+    const legend = document.getElementById('requestLegend');
+    if (stream) {
+        stream.style.display = 'none';
+        stream.innerHTML = '';
+    }
+    if (box) box.style.display = 'block';
+    if (legend) legend.style.display = 'flex';
+    if (title) title.textContent = 'Live Requests';
 }

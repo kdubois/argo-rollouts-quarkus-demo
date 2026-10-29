@@ -141,11 +141,12 @@
                     <canvas id="successRateGraph" width="500" height="130"></canvas>
                 </div>
 
-                <!-- Live Request Flow -->
+                <!-- Live Request Flow / AI Fix Stream (swaps while a remediation sandbox runs) -->
                 <div class="requests-card">
-                    <div class="requests-title">Live Requests</div>
+                    <div class="requests-title" id="requestsTitle">Live Requests</div>
                     <div class="request-visualization" id="requestVisualization"></div>
-                    <div class="request-flow-legend">
+                    <div class="agent-stream" id="agentStream" style="display:none"></div>
+                    <div class="request-flow-legend" id="requestLegend">
                         <span class="req-legend"><span class="req-dot stable"></span>Stable</span>
                         <span class="req-legend"><span class="req-dot canary-success"></span>Canary OK</span>
                         <span class="req-legend"><span class="req-dot canary-error"></span>Canary Err</span>

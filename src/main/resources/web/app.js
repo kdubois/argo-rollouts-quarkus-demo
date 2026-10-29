@@ -60,32 +60,7 @@ function initDisplayModeControls() {
         applyDisplayMode(nextMode);
         setStoredDisplayMode(nextMode);
 
-        if (successRateHistory.length > 0) {
-            updateSuccessRateGraph(successRateHistory[successRateHistory.length - 1]);
-        }
     });
-}
-
-function getGraphPalette() {
-    if (document.body.classList.contains('projector-mode')) {
-        return {
-            gridStroke: 'rgba(82, 105, 145, 0.24)',
-            gridLabel: 'rgba(50, 73, 108, 0.82)',
-            threshold: 'rgba(64, 95, 140, 0.56)',
-            high: '#0c987f',
-            mid: '#b87a0c',
-            low: '#c74060'
-        };
-    }
-
-    return {
-        gridStroke: 'rgba(91, 111, 151, 0.25)',
-        gridLabel: 'rgba(141, 165, 212, 0.7)',
-        threshold: 'rgba(125, 152, 200, 0.5)',
-        high: '#4fe0ce',
-        mid: '#ffc461',
-        low: '#ff7a8f'
-    };
 }
 
 function updateDashboard() {
@@ -125,8 +100,17 @@ function showDemoMode() {
     }
 }
 
+let lastRolloutPhase = null;
+
 function updateRolloutProgress(rolloutData) {
     const phase = rolloutData.phase || 'Unknown';
+
+    // a new rollout starting clears the remediation log so the previous
+    // run's output is never confused with the current one
+    if (phase === 'Progressing' && lastRolloutPhase && lastRolloutPhase !== 'Progressing') {
+        revertRequestsBox();
+    }
+    lastRolloutPhase = phase;
     const canaryWeight = rolloutData.canaryWeight || 0;
     const currentStepIndex = rolloutData.currentStepIndex;
 
@@ -226,8 +210,6 @@ function updateAIAnalysis(rolloutData, metricsData, versionMetrics) {
 
         updateDecisionCard(analysis, rolloutData.phase);
 
-        const graphSuccessRate = (versionMetrics.canaryRequestCount > 0) ? canarySuccessRate : stableSuccessRate;
-        updateSuccessRateGraph(graphSuccessRate);
     } catch (error) {
         console.error('Error in updateAIAnalysis:', error);
     }
@@ -303,83 +285,6 @@ function updateDecisionCard(analysis, rolloutPhase) {
         errorLog.textContent = analysis.errorLog;
     } else {
         errorDetails.style.display = 'none';
-    }
-}
-
-const successRateHistory = [];
-const maxHistoryPoints = 30;
-
-function updateSuccessRateGraph(currentSuccessRate) {
-    successRateHistory.push(currentSuccessRate);
-    if (successRateHistory.length > maxHistoryPoints) {
-        successRateHistory.shift();
-    }
-
-    const canvas = document.getElementById('successRateGraph');
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
-    ctx.clearRect(0, 0, width, height);
-
-    if (successRateHistory.length < 2) return;
-
-    // Auto-scale Y-axis to make variations visible
-    const dataMin = Math.min(...successRateHistory);
-    const dataMax = Math.max(...successRateHistory);
-    const dataRange = Math.max(dataMax - dataMin, 5);
-    const yMin = Math.max(0, Math.floor(dataMin - dataRange * 0.3));
-    const yMax = Math.min(100, Math.ceil(dataMax + dataRange * 0.2));
-    const yRange = yMax - yMin;
-
-    function rateToY(rate) {
-        return height - ((rate - yMin) / yRange) * height;
-    }
-
-    const palette = getGraphPalette();
-
-    // Grid lines with labels
-    ctx.strokeStyle = palette.gridStroke;
-    ctx.fillStyle = palette.gridLabel;
-    ctx.font = '12px monospace';
-    ctx.lineWidth = 1;
-    const gridStep = yRange <= 10 ? 2 : yRange <= 25 ? 5 : 10;
-    const gridStart = Math.ceil(yMin / gridStep) * gridStep;
-    for (let v = gridStart; v <= yMax; v += gridStep) {
-        const y = rateToY(v);
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-        ctx.fillText(v + '%', 4, y - 3);
-    }
-
-    // Data line
-    ctx.strokeStyle = currentSuccessRate >= 95 ? palette.high : currentSuccessRate >= 90 ? palette.mid : palette.low;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-
-    const pointSpacing = width / (maxHistoryPoints - 1);
-    successRateHistory.forEach((rate, index) => {
-        const x = index * pointSpacing;
-        const y = rateToY(rate);
-        if (index === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    // 95% threshold line (only if in visible range)
-    if (95 >= yMin && 95 <= yMax) {
-        ctx.strokeStyle = palette.threshold;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        const thresholdY = rateToY(95);
-        ctx.beginPath();
-        ctx.moveTo(0, thresholdY);
-        ctx.lineTo(width, thresholdY);
-        ctx.stroke();
-        ctx.setLineDash([]);
     }
 }
 
@@ -466,6 +371,10 @@ function appendActivityItem(event) {
         item.classList.add('error-event');
     } else if (event.type === 'REMEDIATION') {
         item.classList.add('remediation-event');
+        // surface the PR link in the remediation log box as its final line
+        if (sandboxName && event.details && event.details.startsWith('http')) {
+            appendStreamLine({ type: 'result', text: 'PR: ' + event.details });
+        }
     } else if (event.type === 'ANALYSIS_INSIGHT') {
         item.classList.add('insight-event');
     } else if (event.type === 'CONFIDENCE_SCORE') {
@@ -667,6 +576,28 @@ let sandboxName = null;
 let sandboxNextLine = 0;
 let sandboxDone = false;
 let sandboxRevertTimer = null;
+let streamTimerInterval = null;
+let streamStartedAt = null;
+
+function startStreamTimer() {
+    streamStartedAt = Date.now();
+    stopStreamTimer();
+    const card = document.getElementById('requestsCard');
+    if (card) card.classList.add('remediating');
+    streamTimerInterval = setInterval(() => {
+        const el = document.getElementById('streamTimer');
+        if (!el || !streamStartedAt) return;
+        const s = Math.floor((Date.now() - streamStartedAt) / 1000);
+        el.textContent = '· ' + Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's';
+    }, 1000);
+}
+
+function stopStreamTimer() {
+    if (streamTimerInterval) clearInterval(streamTimerInterval);
+    streamTimerInterval = null;
+    const el = document.getElementById('streamTimer');
+    if (el) el.textContent = '';
+}
 
 function initSandboxStream() {
     setInterval(pollSandbox, 2000);
@@ -710,7 +641,8 @@ function startSandboxStream(name) {
         stream.innerHTML = '';
         stream.style.display = 'flex';
     }
-    if (title) title.textContent = 'AI Fix in Progress';
+    if (title) title.firstChild.textContent = 'Remediation Log ';
+    startStreamTimer();
     fetchSandboxLog();
 }
 
@@ -724,7 +656,8 @@ function fetchSandboxLog() {
             if (data.done) {
                 sandboxDone = true;
                 const title = document.getElementById('requestsTitle');
-                if (title) title.textContent = 'AI Fix Complete';
+                stopStreamTimer();
+                if (title) title.firstChild.textContent = 'Remediation Log ';
             }
         })
         .catch(err => console.debug('Sandbox log unavailable:', err.message));
@@ -754,7 +687,12 @@ function appendStreamLine(line) {
 function revertRequestsBox() {
     sandboxName = null;
     sandboxNextLine = 0;
+    sandboxDone = false;
     sandboxRevertTimer = null;
+    stopStreamTimer();
+    streamStartedAt = null;
+    const card = document.getElementById('requestsCard');
+    if (card) card.classList.remove('remediating');
     const box = document.getElementById('requestVisualization');
     const stream = document.getElementById('agentStream');
     const title = document.getElementById('requestsTitle');
@@ -765,5 +703,5 @@ function revertRequestsBox() {
     }
     if (box) box.style.display = 'block';
     if (legend) legend.style.display = 'flex';
-    if (title) title.textContent = 'Live Requests';
+    if (title) title.firstChild.textContent = 'Live Requests ';
 }

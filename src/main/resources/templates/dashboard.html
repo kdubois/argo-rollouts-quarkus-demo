@@ -88,7 +88,7 @@
 
         <!-- Main Content: Activity Feed + Right Panel -->
         <div class="main-content">
-            <!-- Left: Agent Activity Feed -->
+            <!-- Left: Analysis Activity Feed -->
             <div class="activity-panel">
                 <div class="panel-header">
                     <div class="panel-title-group">
@@ -102,7 +102,7 @@
                                 <path d="M9 4h6"></path>
                             </svg>
                         </span>
-                        <h2 class="panel-title">Agent Activity</h2>
+                        <h2 class="panel-title">Analysis Activity</h2>
                     </div>
                     <div class="activity-status" id="activityStatus">
                         <div class="activity-dot"></div>
@@ -116,7 +116,7 @@
                 </div>
             </div>
 
-            <!-- Right: Decision + Metrics + Requests -->
+            <!-- Right: Decision + Requests/Remediation Log -->
             <div class="info-panel">
                 <!-- AI Decision -->
                 <div class="decision-card" id="decisionCard">
@@ -135,15 +135,9 @@
                     </details>
                 </div>
 
-                <!-- Success Rate Graph -->
-                <div class="graph-card">
-                    <div class="graph-title">Success Rate Trend <span class="graph-legend">--- 95% threshold</span></div>
-                    <canvas id="successRateGraph" width="500" height="130"></canvas>
-                </div>
-
-                <!-- Live Request Flow / AI Fix Stream (swaps while a remediation sandbox runs) -->
-                <div class="requests-card">
-                    <div class="requests-title" id="requestsTitle">Live Requests</div>
+                <!-- Live Request Flow / Remediation Log (swaps while a remediation sandbox runs) -->
+                <div class="requests-card" id="requestsCard">
+                    <div class="requests-title" id="requestsTitle">Live Requests <span class="stream-timer" id="streamTimer"></span></div>
                     <div class="request-visualization" id="requestVisualization"></div>
                     <div class="agent-stream" id="agentStream" style="display:none"></div>
                     <div class="request-flow-legend" id="requestLegend">

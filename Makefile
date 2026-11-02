@@ -1,4 +1,4 @@
-.PHONY: help build docker-build docker-push deploy undeploy dev test clean
+.PHONY: help build docker-build docker-push dev test clean
 
 # Variables
 IMAGE_NAME := quay.io/kdubois/demo-app
@@ -27,18 +27,8 @@ docker-push: docker-build ## Push Docker image to registry
 	docker push $(FULL_IMAGE)
 	@echo "Docker image pushed successfully"
 
-deploy: ## Deploy to Kubernetes using kustomize
-	@echo "Deploying to Kubernetes..."
-	kubectl apply -k kubernetes/
-	@echo "Waiting for rollout to be ready..."
-	kubectl wait --for=condition=available --timeout=300s rollout/demo-app -n demo-app || true
-	kubectl argo rollouts status demo-app -n demo-app
-	@echo "Deployment complete"
-
-undeploy: ## Remove from Kubernetes
-	@echo "Removing from Kubernetes..."
-	kubectl delete -k kubernetes/ --ignore-not-found=true
-	@echo "Undeployment complete"
+# The rollout and its manifests are managed by Argo CD from the
+# progressive-delivery repository; there is nothing to deploy from here.
 
 dev: ## Run in Quarkus dev mode
 	@echo "Starting Quarkus dev mode..."

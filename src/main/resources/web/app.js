@@ -113,7 +113,10 @@ function updateRolloutProgress(rolloutData) {
     lastRolloutPhase = phase;
     // a Degraded rollout has rolled back: the canary serves no traffic,
     // even while the status still reports the last step's weight
-    const canaryWeight = phase === 'Degraded' ? 0 : (rolloutData.canaryWeight || 0);
+    // the backend reports canaryWeight as null when the live rollout status
+    // has no weight yet — the pips then rely on the step index alone
+    const weightKnown = rolloutData.canaryWeight !== null && rolloutData.canaryWeight !== undefined;
+    const canaryWeight = phase === 'Degraded' ? 0 : rolloutData.canaryWeight;
     const currentStepIndex = rolloutData.currentStepIndex;
 
     const badge = document.getElementById('rolloutStatusBadge');
@@ -161,9 +164,9 @@ function updateRolloutProgress(rolloutData) {
             // the early pips again
             return;
         }
-        if (isPastStage || weight < canaryWeight) {
+        if (isPastStage || (weightKnown && weight < canaryWeight)) {
             pip.classList.add('completed');
-        } else if (isCurrentStage || (weight === canaryWeight && (currentStepIndex === null || currentStepIndex === undefined))) {
+        } else if (isCurrentStage || (weightKnown && weight === canaryWeight && (currentStepIndex === null || currentStepIndex === undefined))) {
             if (phase === 'Paused') {
                 pip.classList.add('paused');
             } else {
@@ -174,21 +177,34 @@ function updateRolloutProgress(rolloutData) {
 }
 
 function updateTrafficDistribution(rolloutData, versionMetrics) {
-    const canaryWeight = rolloutData.phase === 'Degraded' ? 0 : (rolloutData.canaryWeight ?? 0);
-    const stableWeight = 100 - canaryWeight;
+    const weightKnown = rolloutData.canaryWeight !== null && rolloutData.canaryWeight !== undefined;
+    const canaryWeight = rolloutData.phase === 'Degraded' ? 0 : rolloutData.canaryWeight;
+    const stableWeight = weightKnown || rolloutData.phase === 'Degraded' ? 100 - canaryWeight : null;
 
     const stableSegment = document.getElementById('stableSegment');
     const canarySegment = document.getElementById('canarySegment');
     const stablePercentage = document.getElementById('stablePercentage');
     const canaryPercentage = document.getElementById('canaryPercentage');
+    const trafficBar = stableSegment ? stableSegment.parentElement : null;
 
-    stableSegment.style.width = stableWeight + '%';
-    canarySegment.style.width = canaryWeight + '%';
-    stablePercentage.textContent = stableWeight + '%';
-    canaryPercentage.textContent = canaryWeight + '%';
+    if (stableWeight === null) {
+        // live canary weight unavailable: show an empty bar rather than a
+        // made-up split, and let the stage pips tell the story
+        if (trafficBar) trafficBar.classList.add('pending');
+        stableSegment.style.width = '0%';
+        canarySegment.style.width = '0%';
+        stablePercentage.style.display = 'none';
+        canaryPercentage.style.display = 'none';
+    } else {
+        if (trafficBar) trafficBar.classList.remove('pending');
+        stableSegment.style.width = stableWeight + '%';
+        canarySegment.style.width = canaryWeight + '%';
+        stablePercentage.textContent = stableWeight + '%';
+        canaryPercentage.textContent = canaryWeight + '%';
 
-    stablePercentage.style.display = stableWeight < 15 ? 'none' : 'flex';
-    canaryPercentage.style.display = canaryWeight < 15 ? 'none' : 'flex';
+        stablePercentage.style.display = stableWeight < 15 ? 'none' : 'flex';
+        canaryPercentage.style.display = canaryWeight < 15 ? 'none' : 'flex';
+    }
 
     const stablePodCount = document.getElementById('stablePodCount');
     const canaryPodCount = document.getElementById('canaryPodCount');

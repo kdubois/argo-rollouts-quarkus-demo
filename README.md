@@ -187,9 +187,6 @@ make build
 # Build and push Docker image
 make docker-build docker-push
 
-# Deploy to Kubernetes
-make deploy
-
 # Run in dev mode
 make dev
 
@@ -199,17 +196,13 @@ make test
 
 ## Deployment to Kubernetes
 
-For complete deployment instructions including Argo Rollouts, Istio, and the AI Plugin, see the [Deployment Guide](DEPLOYMENT.md).
-
-Quick deployment using kustomize:
+The demo app is deployed through GitOps: the rollout, AnalysisTemplate, and services live in the [progressive-delivery](../progressive-delivery) repository, and Argo CD syncs them into the cluster. To change the deployment, edit that repository and push — there are no manifests to apply from this repo. To watch the rollout:
 
 ```bash
-# Deploy all resources
-kubectl apply -k kubernetes/
-
-# Watch rollout progress
-kubectl argo rollouts get rollout demo-app -n demo-app --watch
+kubectl argo rollouts get rollout quarkus-demo -n quarkus-demo --watch
 ```
+
+For the full setup including Argo Rollouts and the AI plugin, see the [Deployment Guide](DEPLOYMENT.md) and the [progressive-delivery README](../progressive-delivery/README.md).
 
 ## Configuration
 

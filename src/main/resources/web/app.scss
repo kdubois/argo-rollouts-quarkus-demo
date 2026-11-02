@@ -286,6 +286,12 @@ body::before {
     background: linear-gradient(90deg, #8a3245, #b84761);
 }
 
+/* No live canary weight yet: the bar stays empty instead of showing a made-up split */
+.traffic-bar.pending {
+    border-style: dashed;
+    opacity: 0.55;
+}
+
 .traffic-labels {
     display: flex;
     justify-content: space-between;

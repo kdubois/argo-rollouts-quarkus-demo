@@ -658,8 +658,9 @@ kubectl delete rollout demo-app -n demo-app
 # Wait for pods to terminate
 kubectl wait --for=delete pod -l app=demo-app -n demo-app --timeout=60s
 
-# Redeploy from manifests
-kubectl apply -k demo-app/kubernetes/
+# Redeploy from the progressive-delivery repository: Argo CD's selfHeal
+# recreates the deleted rollout automatically, or force it with:
+argocd app sync quarkus-rollouts-demo
 
 # Wait for rollout to be healthy
 kubectl argo rollouts status demo-app -n demo-app --watch
@@ -816,8 +817,10 @@ If the demo is completely broken and you need to start fresh:
 ```bash
 # Delete and recreate everything
 kubectl delete namespace demo-app
-kubectl create namespace demo-app
-kubectl apply -k demo-app/kubernetes/
+
+# Argo CD recreates the workload from the progressive-delivery repository;
+# force the resync with:
+argocd app sync quarkus-rollouts-demo
 
 # Wait for healthy state
 kubectl wait --for=condition=available --timeout=300s \

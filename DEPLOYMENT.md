@@ -394,31 +394,18 @@ time="2024-01-15T10:00:00Z" level=info msg="Metric provider plugin loaded succes
 
 The demo application is a Quarkus-based service that demonstrates AI-powered progressive delivery.
 
-#### Deploy Using Kustomize
+#### Deploy through GitOps
+
+The demo application's rollout, AnalysisTemplate, and services are managed by Argo CD from the [progressive-delivery](../progressive-delivery) repository — there are no local manifests to apply. To deploy or change them, edit that repository and push. Argo CD syncs automatically, or you can force it:
 
 ```bash
-# Navigate to demo-app directory
-cd demo-app
-
-# Deploy all resources
-kubectl apply -k kubernetes/
-
-# Wait for rollout to be healthy
-kubectl argo rollouts status demo-app -n demo-app --watch
+argocd app sync quarkus-rollouts-demo
 ```
 
-**Expected Output**:
-```
-namespace/demo-app created
-service/demo-app-stable created
-service/demo-app-canary created
-gateway.networking.istio.io/demo-app-gateway created
-virtualservice.networking.istio.io/demo-app-vsvc created
-analysistemplate.argoproj.io/ai-analysis created
-rollout.argoproj.io/demo-app created
+Once synced, watch the rollout:
 
-Waiting for rollout "demo-app" to be ready...
-Rollout "demo-app" is healthy
+```bash
+kubectl argo rollouts status quarkus-demo -n quarkus-demo --watch
 ```
 
 #### Verify Deployment

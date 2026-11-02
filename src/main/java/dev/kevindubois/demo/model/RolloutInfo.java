@@ -13,8 +13,8 @@ public record RolloutInfo(
         return new RolloutInfo(
             "N/A",
             "NotFound",
-            0,
-            100,
+            null,
+            null,
             "No active rollout found",
             null,
             null

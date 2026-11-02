@@ -20,6 +20,7 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +74,7 @@ public class RolloutStatusResource {
             }
 
             RolloutInfo info = extractRolloutInfo(rollout);
-            Log.debugf("Rollout status: phase=%s, canaryWeight=%d, stableWeight=%d",
+            Log.debugf("Rollout status: phase=%s, canaryWeight=%s, stableWeight=%s",
                     info.phase(), info.canaryWeight(), info.stableWeight());
             return info;
 
@@ -82,8 +83,8 @@ public class RolloutStatusResource {
             return new RolloutInfo(
                     rolloutName,
                     "Error",
-                    0,
-                    100,
+                    null,
+                    null,
                     "Error fetching rollout: " + e.getMessage(),
                     null,
                     null
@@ -96,8 +97,8 @@ public class RolloutStatusResource {
 
         String phase = getPhase(status);
         String message = getMessage(status);
-        Integer canaryWeight = getCanaryWeight(status);
-        Integer stableWeight = 100 - canaryWeight;
+        Integer canaryWeight = canaryWeightFrom(status);
+        Integer stableWeight = canaryWeight == null ? null : 100 - canaryWeight;
         Integer currentStepIndex = getCurrentStepIndex(status);
 
         AnalysisInfo analysisInfo = getAnalysisInfo(status);
@@ -119,7 +120,7 @@ public class RolloutStatusResource {
         return status instanceof Map ? (Map<String, Object>) status : Map.of();
     }
 
-    private String getPhase(Map<String, Object> status) {
+    private static String getPhase(Map<String, Object> status) {
         Object phase = status.get("phase");
         return phase != null ? phase.toString() : "Unknown";
     }
@@ -141,62 +142,40 @@ public class RolloutStatusResource {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
-    private Integer getCanaryWeight(Map<String, Object> status) {
-        try {
-            String phase = getPhase(status);
-            
-            // If rollout is degraded or aborted, canary weight should be 0
-            if ("Degraded".equals(phase) || "Aborted".equals(phase)) {
-                return 0;
-            }
-            
-            // Check if rollout is healthy and fully promoted
-            Object stableRS = status.get("stableRS");
-            Object canaryRS = status.get("canaryRS");
-            if ("Healthy".equals(phase) && stableRS != null && canaryRS != null && stableRS.equals(canaryRS)) {
-                return 0; // Fully promoted: canary is now the new stable, no canary traffic remains
-            }
-            
-            // Try to get actual weight from canary.weights.canary.weight first (most accurate)
-            Object canaryStatus = status.get("canary");
-            if (canaryStatus instanceof Map) {
-                Map<String, Object> canaryMap = (Map<String, Object>) canaryStatus;
-                Object weights = canaryMap.get("weights");
-                if (weights instanceof Map) {
-                    Map<String, Object> weightsMap = (Map<String, Object>) weights;
-                    Object canary = weightsMap.get("canary");
-                    if (canary instanceof Map) {
-                        // Canary is an object with weight field
-                        Map<String, Object> canaryWeightMap = (Map<String, Object>) canary;
-                        Object weightObj = canaryWeightMap.get("weight");
-                        if (weightObj instanceof Number) {
-                            int weight = ((Number) weightObj).intValue();
-                            return weight;
-                        }
-                    } else if (canary instanceof Number) {
-                        // Fallback: canary might be a direct number in some configurations
-                        int weight = ((Number) canary).intValue();
-                        return weight;
-                    }
-                }
-            }
-            
-            // Fallback: use current step index
-            Object currentStepIndex = status.get("currentStepIndex");
-            if (currentStepIndex instanceof Number) {
-                int stepIndex = ((Number) currentStepIndex).intValue();
-                // Map step index to weight based on rollout configuration
-                // Steps: 0=10%, 1=pause, 2=10%, 3=pause, 4=60%, 5=pause, 6=100%
-                int[] weights = {10, 10, 30, 30, 60, 60, 100};
-                if (stepIndex >= 0 && stepIndex < weights.length) {
-                    return weights[stepIndex];
-                }
-            }
-        } catch (Exception e) {
-            Log.error("Could not extract canary weight", e);
+    /**
+     * Canary traffic weight reported by the live rollout status, or {@code null}
+     * when the Argo Rollouts controller has not published one. No percentage is
+     * invented from the step index: callers surface the step index instead.
+     */
+    static Integer canaryWeightFrom(Map<String, Object> status) {
+        String phase = getPhase(status);
+
+        // A degraded or aborted rollout has rolled back: the canary serves no traffic.
+        if ("Degraded".equals(phase) || "Aborted".equals(phase)) {
+            return 0;
         }
-        return 0;
+
+        // A healthy, fully promoted rollout has no canary traffic left.
+        Object stableRS = status.get("stableRS");
+        Object canaryRS = status.get("canaryRS");
+        if ("Healthy".equals(phase) && stableRS != null && canaryRS != null && stableRS.equals(canaryRS)) {
+            return 0;
+        }
+
+        // Live weight from canary.weights.canary.weight
+        if (status.get("canary") instanceof Map<?, ?> canaryMap
+                && canaryMap.get("weights") instanceof Map<?, ?> weightsMap) {
+            Object canary = weightsMap.get("canary");
+            if (canary instanceof Map<?, ?> canaryWeightMap) {
+                if (canaryWeightMap.get("weight") instanceof Number weight) {
+                    return weight.intValue();
+                }
+            } else if (canary instanceof Number weight) {
+                // Some configurations report the canary weight as a direct number
+                return weight.intValue();
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
@@ -523,7 +502,7 @@ public class RolloutStatusResource {
                     
                     String podUrl = "http://" + podIp + ":8080/api/status";
                     Log.debug("Fetching metrics from pod " + pod.getMetadata().getName() + " at " + podUrl);
-                    URL url = new URL(podUrl);
+                    URL url = URI.create(podUrl).toURL();
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("GET");
                     conn.setConnectTimeout(2000);

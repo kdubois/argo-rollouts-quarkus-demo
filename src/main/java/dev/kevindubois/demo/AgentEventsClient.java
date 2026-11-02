@@ -7,7 +7,7 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 import java.util.List;
 
-@Path("/a2a/events")
+@Path("/events")
 @RegisterRestClient(configKey = "kubernetes-agent")
 public interface AgentEventsClient {
 

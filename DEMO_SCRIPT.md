@@ -554,11 +554,11 @@ Images:          ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (stable)
 "The gate is two settings in the AnalysisTemplate. I'm setting the threshold to 95 — higher than any of our scenarios score, so the very next analysis trips it. In a real deployment you would set it around 50 and only genuinely uncertain analyses would hold."
 
 ```bash
-# In the progressive-delivery repo: uncomment and set the gate in
-# workloads/quarkus-rollouts-demo/base/analysistemplate-ai-agent.yaml:
-#   pauseOnUncertainty: true
-#   uncertaintyThreshold: 95
-git add . && git commit -m "demo: enable the uncertainty pause gate" && git push
+# The gate is on by default (threshold 50). For the demo, raise the
+# threshold to 99 — above what the healthy scenario scores — so the very
+# next analysis trips it:
+#   uncertaintyThreshold: 99
+git add . && git commit -m "demo: raise the uncertainty threshold" && git push
 
 # Wait for Argo CD to sync, then verify
 kubectl get analysistemplate ai-analysis-agent -n demo-app -o yaml | grep -A2 uncertainty

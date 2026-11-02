@@ -5,7 +5,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.QueryParam;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
-@Path("/a2a/rollout")
+@Path("/rollout")
 @RegisterRestClient(configKey = "kubernetes-agent")
 public interface KubernetesRolloutClient {
 

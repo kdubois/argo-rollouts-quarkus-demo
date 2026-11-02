@@ -602,7 +602,7 @@ kubectl get analysisrun -n demo-app -o yaml | grep -B2 pausedRollout
 
 ```bash
 # Resume the rollout — you are overriding the analysis
-oc argo rollouts unpause demo-app -n demo-app
+oc argo rollouts promote demo-app -n demo-app
 ```
 
 **Talking Points**:

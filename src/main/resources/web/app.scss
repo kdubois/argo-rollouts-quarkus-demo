@@ -292,6 +292,38 @@ body::before {
     opacity: 0.55;
 }
 
+/* The pause gate is holding traffic: pulse the bar so it reads from the back row */
+.traffic-bar.held {
+    position: relative;
+    border-color: rgba(255, 196, 97, 0.85);
+    animation: traffic-held-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes traffic-held-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 196, 97, 0.35); }
+    50% { box-shadow: 0 0 12px 2px rgba(255, 196, 97, 0.3); }
+}
+
+.traffic-held-badge {
+    display: none;
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #241804;
+    background: var(--signal-amber);
+    padding: 2px 7px;
+}
+
+.traffic-held-badge.visible {
+    display: inline-flex;
+}
+
 .traffic-labels {
     display: flex;
     justify-content: space-between;
@@ -1165,6 +1197,87 @@ body::before {
     background: rgba(111, 178, 255, 0.07);
 }
 
+// === Pause gate controls (promote / abort) ===
+.gate-controls {
+    margin-top: 10px;
+    border: 1px solid rgba(255, 196, 97, 0.65);
+    background: rgba(255, 196, 97, 0.07);
+    padding: 10px 12px;
+    animation: gate-pulse 2s ease-in-out infinite;
+}
+
+@keyframes gate-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 196, 97, 0.25); }
+    50% { box-shadow: 0 0 14px 2px rgba(255, 196, 97, 0.22); }
+}
+
+.gate-controls-title {
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 0.92rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #ffe1ae;
+    margin-bottom: 9px;
+}
+
+.gate-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.gate-btn {
+    flex: 1;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 10px 12px;
+    cursor: pointer;
+    border: 1px solid;
+    transition: filter 150ms ease, transform 100ms ease;
+}
+
+.gate-btn:hover:not(:disabled) {
+    filter: brightness(1.15);
+}
+
+.gate-btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.gate-btn:disabled {
+    cursor: wait;
+}
+
+.gate-btn.loading {
+    animation: statusPulse 1s ease-in-out infinite;
+}
+
+.gate-promote {
+    color: #06231e;
+    background: linear-gradient(180deg, #3ce0c4, #17b09a);
+    border-color: rgba(79, 224, 206, 0.9);
+}
+
+.gate-abort {
+    color: #2b070d;
+    background: linear-gradient(180deg, #ff96a9, #e05c74);
+    border-color: rgba(255, 122, 143, 0.9);
+}
+
+.gate-error {
+    margin-top: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    color: #ffc1cc;
+
+    &:empty {
+        display: none;
+    }
+}
+
 // === Decision Model (grader) card ===
 .grader-card {
     border: 1px solid var(--line);
@@ -1754,6 +1867,30 @@ body.projector-mode .measurement-badge {
     color: #2a5aa2;
     border-color: rgba(42, 90, 162, 0.4);
     background: rgba(42, 90, 162, 0.07);
+}
+
+body.projector-mode .gate-controls-title {
+    color: #8f6413;
+}
+
+body.projector-mode .gate-promote {
+    background: #0c987f;
+    color: #eafffb;
+    border-color: rgba(12, 152, 127, 0.8);
+}
+
+body.projector-mode .gate-abort {
+    background: #c74060;
+    color: #fff0f3;
+    border-color: rgba(199, 64, 96, 0.8);
+}
+
+body.projector-mode .gate-error {
+    color: #a33050;
+}
+
+body.projector-mode .traffic-bar.held {
+    border-color: rgba(180, 120, 20, 0.85);
 }
 
 body.projector-mode .activity-item.grader-event {

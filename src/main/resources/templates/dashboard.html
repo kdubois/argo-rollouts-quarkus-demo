@@ -42,6 +42,7 @@
                     <div class="traffic-segment traffic-canary" id="canarySegment" style="width: 0%">
                         <span id="canaryPercentage">0%</span>
                     </div>
+                    <div class="traffic-held-badge" id="trafficHeldBadge">&#9208; HELD</div>
                 </div>
                 <div class="traffic-labels">
                     <span class="traffic-label stable">
@@ -132,6 +133,14 @@
                         <span class="verdict-text" id="verdictText">Waiting for analysis...</span>
                     </div>
                     <div class="decision-message" id="decisionMessage"></div>
+                    <div class="gate-controls" id="gateControls" style="display:none">
+                        <div class="gate-controls-title">&#9208; Pause gate &mdash; rollout held</div>
+                        <div class="gate-buttons">
+                            <button class="gate-btn gate-promote" id="promoteBtn" type="button">&#10004; Promote</button>
+                            <button class="gate-btn gate-abort" id="abortBtn" type="button">&#10006; Abort</button>
+                        </div>
+                        <div class="gate-error" id="gateError"></div>
+                    </div>
                     <details class="decision-error-details" id="decisionErrorDetails" style="display:none">
                         <summary>Error details</summary>
                         <pre class="decision-error-log" id="decisionErrorLog"></pre>

@@ -4,10 +4,12 @@ let previousSuccessRate = null;
 let previousErrorRate = null;
 const DISPLAY_MODE_KEY = 'dashboardDisplayMode';
 
-// === DECISION MODEL STATE ===
+// === DECISION MODEL / GATE STATE ===
 // strongModelActive flips to true once a MODEL_ESCALATION event is seen:
 // analysis events after that point were produced by the strong tier.
 let strongModelActive = false;
+let pauseGateActive = false;
+let gateRequestInFlight = false;
 
 function getStoredDisplayMode() {
     try {
@@ -130,6 +132,12 @@ function updateRolloutProgress(rolloutData) {
     const statusClass = phase.toLowerCase().replace(/\s+/g, '-');
     badge.innerHTML = '<div class="status-badge ' + statusClass + '">' +
         '<div class="status-dot"></div>' + phase + '</div>';
+
+    // the pause gate holds the rollout when the grader disputes the analysis:
+    // Argo Rollouts reports it as a manual pause with a "manually paused" message
+    pauseGateActive = phase === 'Paused' && /manually paused/i.test(rolloutData.message || '');
+    updateTrafficHeld();
+    updateGateControls();
 
     const rolloutMessage = document.getElementById('rolloutMessage');
     if (rolloutMessage) {
@@ -420,6 +428,8 @@ function appendActivityItem(event) {
     const item = document.createElement('div');
     item.className = 'activity-item';
 
+    const grader = event.type === 'GRADER' ? parseGraderEvent(event) : null;
+
     if (event.type === 'DECISION') {
         item.classList.add('decision-event');
         if (event.message.includes('PROMOTE')) item.classList.add('promote');
@@ -446,7 +456,6 @@ function appendActivityItem(event) {
         item.classList.add('pause-failed-event');
     } else if (event.type === 'GRADER') {
         item.classList.add('grader-event');
-        const grader = parseGraderEvent(event);
         if (grader) {
             item.classList.add(grader.verdict);
             updateGraderCard(grader);
@@ -473,15 +482,12 @@ function appendActivityItem(event) {
         }
     }
 
-    if (event.type === 'GRADER') {
-        const grader = parseGraderEvent(event);
-        if (grader) {
-            const icons = { supported: '\u2714', neutral: '~', disputed: '\u2718' };
-            messageHtml = '<span class="grader-verdict-chip ' + grader.verdict + '">' +
-                icons[grader.verdict] + ' ' + grader.verdict.charAt(0).toUpperCase() + grader.verdict.slice(1) +
-                '</span><span class="grader-probability">' +
-                Math.round(grader.probability * 100) + '%</span>';
-        }
+    if (grader) {
+        const icons = { supported: '\u2714', neutral: '~', disputed: '\u2718' };
+        messageHtml = '<span class="grader-verdict-chip ' + grader.verdict + '">' +
+            icons[grader.verdict] + ' ' + grader.verdict.charAt(0).toUpperCase() + grader.verdict.slice(1) +
+            '</span><span class="grader-probability">' +
+            Math.round(grader.probability * 100) + '%</span>';
     }
 
     let detailsHtml = event.details ? linkifyDetails(event.details) : '';
@@ -745,6 +751,63 @@ function escalationFlowHtml(event) {
         '</div>';
 }
 
+// === PAUSE GATE CONTROLS ===
+
+function updateTrafficHeld() {
+    const bar = document.querySelector('.traffic-bar');
+    if (bar) bar.classList.toggle('held', pauseGateActive);
+    const badge = document.getElementById('trafficHeldBadge');
+    if (badge) badge.classList.toggle('visible', pauseGateActive);
+}
+
+function updateGateControls() {
+    const controls = document.getElementById('gateControls');
+    if (!controls) return;
+    if (gateRequestInFlight) return;
+    controls.style.display = pauseGateActive ? 'block' : 'none';
+    if (!pauseGateActive) {
+        const gateError = document.getElementById('gateError');
+        if (gateError) gateError.textContent = '';
+        ['promoteBtn', 'abortBtn'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('loading');
+            }
+        });
+    }
+}
+
+function sendGateAction(action) {
+    if (gateRequestInFlight) return;
+    gateRequestInFlight = true;
+
+    const btn = document.getElementById(action === 'promote' ? 'promoteBtn' : 'abortBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('loading');
+    }
+    const gateError = document.getElementById('gateError');
+    if (gateError) gateError.textContent = '';
+
+    fetch('/api/rollout/' + action, { method: 'POST' })
+        .then(response => {
+            if (!response.ok) throw new Error('agent returned ' + response.status);
+            const controls = document.getElementById('gateControls');
+            if (controls) controls.style.display = 'none';
+        })
+        .catch(error => {
+            if (gateError) gateError.textContent = 'Could not ' + action + ' the rollout: ' + error.message;
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('loading');
+            }
+        })
+        .finally(() => {
+            gateRequestInFlight = false;
+        });
+}
+
 function linkifyDetails(str) {
     if (!str) return '';
     var urlRe = /(https?:\/\/[^\s<>"']+)/;
@@ -774,11 +837,19 @@ if (document.readyState === 'loading') {
 
 function init() {
     initDisplayModeControls();
+    initGateControls();
     updateDashboard();
     setInterval(updateDashboard, 2000);
     loadActivityHistory();
     initActivityStream();
     initSandboxStream();
+}
+
+function initGateControls() {
+    const promoteBtn = document.getElementById('promoteBtn');
+    const abortBtn = document.getElementById('abortBtn');
+    if (promoteBtn) promoteBtn.addEventListener('click', () => sendGateAction('promote'));
+    if (abortBtn) abortBtn.addEventListener('click', () => sendGateAction('abort'));
 }
 
 // === AI FIX STREAM ===

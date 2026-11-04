@@ -11,9 +11,11 @@ import io.fabric8.kubernetes.client.dsl.base.ResourceDefinitionContext;
 import io.quarkus.logging.Log;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
@@ -24,6 +26,7 @@ import java.net.URI;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 @Path("/api/rollout")
 public class RolloutStatusResource {
@@ -91,6 +94,51 @@ public class RolloutStatusResource {
             );
         }
     }
+
+    /**
+     * Resumes a rollout held by the pause gate by delegating the promote to
+     * the kubernetes-agent, which talks to the Argo Rollouts API.
+     */
+    @POST
+    @Path("/promote")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response promoteRollout() {
+        return forwardRolloutControl("promote",
+                () -> kubernetesRolloutClient.promote(rolloutNamespace, rolloutName));
+    }
+
+    /**
+     * Rolls back a rollout held by the pause gate by delegating the abort to
+     * the kubernetes-agent.
+     */
+    @POST
+    @Path("/abort")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response abortRollout() {
+        return forwardRolloutControl("abort",
+                () -> kubernetesRolloutClient.abort(rolloutNamespace, rolloutName));
+    }
+
+    private Response forwardRolloutControl(String action, Supplier<Response> call) {
+        try {
+            Response agentResponse = call.get();
+            if (agentResponse.getStatusInfo().getFamily() == Response.Status.Family.SUCCESSFUL) {
+                return Response.ok(new RolloutControlResult("ok", action, null)).build();
+            }
+            Log.warnf("kubernetes-agent %s returned %d", action, agentResponse.getStatus());
+            return Response.status(502)
+                    .entity(new RolloutControlResult("error", action,
+                            "agent returned " + agentResponse.getStatus()))
+                    .build();
+        } catch (Exception e) {
+            Log.error("Could not " + action + " rollout " + rolloutName, e);
+            return Response.status(502)
+                    .entity(new RolloutControlResult("error", action, e.getMessage()))
+                    .build();
+        }
+    }
+
+    public record RolloutControlResult(String status, String action, String error) {}
 
     private RolloutInfo extractRolloutInfo(GenericKubernetesResource rollout) {
         Map<String, Object> status = getStatus(rollout);

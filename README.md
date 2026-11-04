@@ -316,6 +316,13 @@ The application includes a web dashboard showing:
 - Real-time metrics
 - Rollout progress
 - Analysis results
+- The decision model's grader assessment (verdict, probability gauge, self-reported confidence)
+- The agent activity feed, including grader verdicts, pause-gate holds, and model escalations
+
+When the pause gate holds a rollout (the grader disputed the analysis), the
+dashboard shows a pulsing traffic bar and Promote/Abort buttons in the decision
+card. Both call the kubernetes-agent (`POST /api/rollout/promote` and
+`POST /api/rollout/abort`), which drives the Argo Rollouts API.
 
 Access the dashboard at: http://localhost:8080/
 

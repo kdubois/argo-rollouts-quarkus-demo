@@ -5,9 +5,12 @@ let previousErrorRate = null;
 const DISPLAY_MODE_KEY = 'dashboardDisplayMode';
 
 // === DECISION MODEL / GATE STATE ===
-// strongModelActive flips to true once a MODEL_ESCALATION event is seen:
-// analysis events after that point were produced by the strong tier.
-let strongModelActive = false;
+// secondOpinionActive flips to true once a MODEL_ESCALATION event is seen:
+// analysis events after that point were produced by the second-opinion tier.
+// lastAnalysisModel is the short model name from the most recent analysis
+// summary — the badge on summary and decision events shows it.
+let secondOpinionActive = false;
+let lastAnalysisModel = null;
 let pauseGateActive = false;
 let gateRequestInFlight = false;
 
@@ -117,7 +120,8 @@ function updateRolloutProgress(rolloutData) {
     if (phase === 'Progressing' && lastRolloutPhase && lastRolloutPhase !== 'Progressing') {
         revertRequestsBox();
         resetGraderCard();
-        strongModelActive = false;
+        secondOpinionActive = false;
+        lastAnalysisModel = null;
     }
     lastRolloutPhase = phase;
     // a Degraded rollout has rolled back: the canary serves no traffic,
@@ -469,8 +473,10 @@ function appendActivityItem(event) {
     } else if (event.type === 'MODEL_ESCALATION') {
         item.classList.add('escalation-event');
         // everything the agent publishes after this point came from the
-        // strong tier
-        strongModelActive = true;
+        // second-opinion tier; the details name it dynamically
+        const escalationMatch = (event.details || '').match(/\u2014 (\S+) re-analyzed:/);
+        if (escalationMatch) lastAnalysisModel = escalationMatch[1];
+        secondOpinionActive = true;
     }
 
     let messageHtml = (event.type === 'REMEDIATION')
@@ -478,36 +484,45 @@ function appendActivityItem(event) {
         : escapeHtml(event.message);
 
     if (event.type === 'CONFIDENCE_SCORE') {
-        const scoreMatch = event.message.match(/Score:\s*(\d+)/);
+        const scoreMatch = event.message.match(/Effective confidence:\s*(\d+)/);
         if (scoreMatch) {
             const score = parseInt(scoreMatch[1]);
             const scoreClass = score >= 70 ? 'score-high' : score >= 50 ? 'score-mid' : 'score-low';
-            messageHtml = 'Score: <span class="score-value ' + scoreClass + '">' + score + '</span>/100';
+            messageHtml = 'Effective confidence: <span class="score-value ' + scoreClass + '">' + score + '</span>/100';
         }
     }
 
     if (grader) {
         const icons = { supported: '\u2714', neutral: '~', disputed: '\u2718' };
-        messageHtml = '<span class="grader-verdict-chip ' + grader.verdict + '">' +
-            icons[grader.verdict] + ' ' + grader.verdict.charAt(0).toUpperCase() + grader.verdict.slice(1) +
-            '</span><span class="grader-probability">' +
-            Math.round(grader.probability * 100) + '%</span>';
+        messageHtml = '<span class="quality-verdict-chip ' + grader.verdict + '">' +
+            icons[grader.verdict] + ' ' + Math.round(grader.probability * 100) + '%</span>' +
+            (grader.finding ? escapeHtml(grader.finding) : '');
     }
 
     let detailsHtml = event.details ? linkifyDetails(event.details) : '';
     if (event.type === 'CONFIDENCE_SCORE' && event.details) {
-        const breakdown = event.details.match(/self-reported:\s*(\d+),\s*grader:\s*([\d.]+)/);
+        const breakdown = event.details.match(/self-reported (\d+)\/100, quality check (\d+)\/100/);
         if (breakdown) {
             detailsHtml = '<span class="confidence-breakdown">self-reported <strong>' + breakdown[1] +
-                '</strong> &middot; grader <strong>' + breakdown[2] + '</strong></span>';
+                '</strong> &middot; quality check <strong>' + breakdown[2] + '</strong></span>';
         }
     }
 
-    // analysis conclusions carry a tier badge once the second-opinion model has
-    // taken over, so it is visible which model produced them
-    const tierBadgeHtml = (event.type === 'DECISION' || event.type === 'ANALYSIS_SUMMARY')
-        ? '<span class="tier-badge ' + (strongModelActive ? 'tier-deepseek' : 'tier-qwen') + '">' +
-            (strongModelActive ? 'DeepSeek' : 'Qwen') + '</span>'
+    // analysis summaries carry the producing model as a "[name]" prefix —
+    // show it as a badge on the summary and on the decision that follows
+    if (event.type === 'ANALYSIS_SUMMARY') {
+        const labelMatch = event.message.match(/^\[(.+?)\]\s*/);
+        if (labelMatch) {
+            lastAnalysisModel = labelMatch[1];
+            messageHtml = escapeHtml(event.message.substring(labelMatch[0].length));
+        }
+    }
+
+    // analysis conclusions carry a tier badge showing which model produced
+    // them — the name comes from the summary event, never hardcoded
+    const tierBadgeHtml = (event.type === 'DECISION' || event.type === 'ANALYSIS_SUMMARY') && lastAnalysisModel
+        ? '<span class="tier-badge ' + (secondOpinionActive ? 'tier-deepseek' : 'tier-qwen') + '">' +
+            escapeHtml(lastAnalysisModel) + '</span>'
         : '';
 
     let html = '';
@@ -670,10 +685,10 @@ function formatEventType(type) {
         'AGENT_START': 'Agent',
         'AGENT_COMPLETE': 'Done',
         'ANALYSIS_INSIGHT': 'Insight',
-        'CONFIDENCE_SCORE': 'Score',
+        'CONFIDENCE_SCORE': 'Confidence',
         'RETRY': 'Retry',
         'ANALYSIS_SUMMARY': 'Summary',
-        'QUALITY_CHECK': 'Quality',
+        'QUALITY_CHECK': 'Quality Check',
         'PAUSE_GATE': 'Held',
         'MODEL_ESCALATION': 'Escalation'
     };
@@ -682,16 +697,19 @@ function formatEventType(type) {
 
 // === DECISION MODEL (GRADER) ===
 
-// QUALITY_CHECK events carry "Quality check: supported (82/100)" as the message and
-// "analysis confidence 85/100, quality score 82/100 — supported" as details
+// QUALITY_CHECK events carry "Quality check: 83/100 — the conclusion is supported
+// by the evidence" as the message and "decision model (Jev) graded the analysis
+// conclusion against the diagnostic data; analysis self-confidence 75/100" as details
 function parseGraderEvent(event) {
-    const titleMatch = event.message.match(/Quality check:\s*(supported|neutral|disputed)\s*\((\d+)\/100\)/);
+    const titleMatch = event.message.match(/Quality check:\s*(\d+)\/100(?:\s*\u2014\s*(.+))?/);
     if (!titleMatch) return null;
-    const selfMatch = event.details && event.details.match(/analysis confidence (\d+)/);
+    const score = parseInt(titleMatch[1], 10);
+    const selfMatch = event.details && event.details.match(/self-confidence (\d+)/);
     return {
-        verdict: titleMatch[1].toLowerCase(),
-        probability: parseInt(titleMatch[2], 10) / 100,
-        selfReported: selfMatch ? parseInt(selfMatch[1], 10) : null
+        verdict: score >= 50 ? 'supported' : score >= 30 ? 'neutral' : 'disputed',
+        probability: score / 100,
+        selfReported: selfMatch ? parseInt(selfMatch[1], 10) : null,
+        finding: titleMatch[2] || ''
     };
 }
 
@@ -706,16 +724,16 @@ function updateGraderCard(grader) {
     if (needle) needle.style.left = (grader.probability * 100) + '%';
 
     const icons = { supported: '\u2714', neutral: '~', disputed: '\u2718' };
+    const verdictTexts = { supported: 'Supported', neutral: 'Inconclusive', disputed: 'Not supported' };
     const verdictBadge = document.getElementById('graderVerdictBadge');
     if (verdictBadge) {
-        verdictBadge.textContent = icons[grader.verdict] + ' ' +
-            grader.verdict.charAt(0).toUpperCase() + grader.verdict.slice(1);
+        verdictBadge.textContent = icons[grader.verdict] + ' ' + verdictTexts[grader.verdict];
     }
 
     const selfReported = document.getElementById('graderSelfReported');
-    if (selfReported) selfReported.textContent = grader.selfReported !== null ? grader.selfReported : '\u2014';
-    const probability = document.getElementById('qualityScore');
-    if (probability) probability.textContent = grader.probability.toFixed(2);
+    if (selfReported) selfReported.textContent = grader.selfReported !== null ? grader.selfReported + '/100' : '\u2014';
+    const probability = document.getElementById('graderProbability');
+    if (probability) probability.textContent = Math.round(grader.probability * 100) + '/100';
 }
 
 function resetGraderCard() {
@@ -729,27 +747,25 @@ function resetGraderCard() {
     if (verdictBadge) verdictBadge.textContent = '\u2014';
     const selfReported = document.getElementById('graderSelfReported');
     if (selfReported) selfReported.textContent = '\u2014';
-    const probability = document.getElementById('qualityScore');
+    const probability = document.getElementById('graderProbability');
     if (probability) probability.textContent = '\u2014';
 }
 
 // MODEL_ESCALATION details read like:
-// "grader disputed at 0.28 (promote, confidence 70); re-analyzed: rollback, confidence 95"
+// "glm-5-3 said continue (95/100), quality check disputed at 29/100 — DeepSeek-V4.1 re-analyzed: continue (85/100)"
 function escalationFlowHtml(event) {
     const details = event.details || '';
-    const before = details.match(/\((promote|rollback), confidence (\d+)\)/);
-    const dispute = details.match(/disputed at ([\d.]+)/);
-    const after = details.match(/re-analyzed:\s*(promote|rollback), confidence (\d+)/);
-    if (!before || !after) return '';
+    const m = details.match(/(\S+) said (continue|rollback) \((\d+)\/100\), quality check disputed at (\d+)\/100 \u2014 (\S+) re-analyzed: (continue|rollback) \((\d+)\/100\)/);
+    if (!m) return '';
 
     return '<div class="escalation-flow">' +
-        '<span class="tier-badge tier-qwen">Qwen</span>' +
-        '<span class="escalation-stage">' + before[1] + ' ' + before[2] + '</span>' +
+        '<span class="tier-badge tier-qwen">' + escapeHtml(m[1]) + '</span>' +
+        '<span class="escalation-stage">' + m[2] + ' ' + m[3] + '</span>' +
         '<span class="escalation-arrow">&rarr;</span>' +
-        (dispute ? '<span class="escalation-dispute">disputed ' + dispute[1] + '</span>' +
-        '<span class="escalation-arrow">&rarr;</span>' : '') +
-        '<span class="tier-badge tier-deepseek">DeepSeek</span>' +
-        '<span class="escalation-stage">' + after[1] + ' ' + after[2] + '</span>' +
+        '<span class="escalation-dispute">disputed ' + m[4] + '</span>' +
+        '<span class="escalation-arrow">&rarr;</span>' +
+        '<span class="tier-badge tier-deepseek">' + escapeHtml(m[5]) + '</span>' +
+        '<span class="escalation-stage">' + m[6] + ' ' + m[7] + '</span>' +
         '</div>';
 }
 

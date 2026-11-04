@@ -122,7 +122,10 @@
                 <div class="decision-card" id="decisionCard">
                     <div class="decision-header">
                         <span class="decision-phase-label">AI Analysis</span>
-                        <span class="decision-phase-badge" id="decisionPhaseBadge">Waiting</span>
+                        <div class="decision-header-badges">
+                            <span class="measurement-badge" id="measurementBadge" style="display:none"></span>
+                            <span class="decision-phase-badge" id="decisionPhaseBadge">Waiting</span>
+                        </div>
                     </div>
                     <div class="decision-verdict" id="decisionVerdict">
                         <span class="verdict-icon" id="verdictIcon"></span>
@@ -133,6 +136,35 @@
                         <summary>Error details</summary>
                         <pre class="decision-error-log" id="decisionErrorLog"></pre>
                     </details>
+                </div>
+
+                <!-- Decision Model (Jev grader) -->
+                <div class="grader-card" id="graderCard">
+                    <div class="grader-header">
+                        <div class="grader-title-group">
+                            <span class="grader-title">Decision Model</span>
+                            <span class="grader-model-badge">Jev</span>
+                        </div>
+                        <span class="grader-verdict-badge" id="graderVerdictBadge">&mdash;</span>
+                    </div>
+                    <div class="grader-gauge">
+                        <div class="grader-gauge-track">
+                            <div class="grader-zone grader-zone-disputed"></div>
+                            <div class="grader-zone grader-zone-neutral"></div>
+                            <div class="grader-zone grader-zone-supported"></div>
+                            <div class="grader-needle" id="graderNeedle"></div>
+                        </div>
+                        <div class="grader-scale">
+                            <span>0.0</span>
+                            <span>0.3</span>
+                            <span>0.5</span>
+                            <span>1.0</span>
+                        </div>
+                    </div>
+                    <div class="grader-values">
+                        <span class="grader-value">Self-reported: <strong id="graderSelfReported">&mdash;</strong></span>
+                        <span class="grader-value">Grader: <strong id="graderProbability">&mdash;</strong></span>
+                    </div>
                 </div>
 
                 <!-- Live Request Flow / Remediation Log (swaps while a remediation sandbox runs) -->

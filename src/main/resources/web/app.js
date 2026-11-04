@@ -4,6 +4,11 @@ let previousSuccessRate = null;
 let previousErrorRate = null;
 const DISPLAY_MODE_KEY = 'dashboardDisplayMode';
 
+// === DECISION MODEL STATE ===
+// strongModelActive flips to true once a MODEL_ESCALATION event is seen:
+// analysis events after that point were produced by the strong tier.
+let strongModelActive = false;
+
 function getStoredDisplayMode() {
     try {
         return localStorage.getItem(DISPLAY_MODE_KEY);
@@ -109,6 +114,8 @@ function updateRolloutProgress(rolloutData) {
     // run's output is never confused with the current one
     if (phase === 'Progressing' && lastRolloutPhase && lastRolloutPhase !== 'Progressing') {
         revertRequestsBox();
+        resetGraderCard();
+        strongModelActive = false;
     }
     lastRolloutPhase = phase;
     // a Degraded rollout has rolled back: the canary serves no traffic,
@@ -250,6 +257,7 @@ function updateDecisionCard(analysis, rolloutPhase) {
 
     card.classList.remove('promote', 'rollback', 'running', 'pending', 'error');
 
+    const measurementBadge = document.getElementById('measurementBadge');
     if (!analysis || analysis.phase === 'NotStarted') {
         phaseBadge.textContent = 'Pending';
         card.classList.add('pending');
@@ -257,13 +265,22 @@ function updateDecisionCard(analysis, rolloutPhase) {
         verdictText.textContent = 'Waiting for analysis to begin';
         messageEl.textContent = '';
         errorDetails.style.display = 'none';
+        if (measurementBadge) measurementBadge.style.display = 'none';
         return;
     }
 
-    const measurement = (analysis.currentMeasurement && analysis.totalMeasurements)
-        ? '  \u00b7  Measurement ' + analysis.currentMeasurement + ' of ' + analysis.totalMeasurements
-        : '';
-    phaseBadge.textContent = (analysis.phase || 'Unknown') + measurement;
+    // the AnalysisTemplate runs a fixed number of measurements — show which
+    // one is in flight as its own badge next to the phase
+    if (measurementBadge) {
+        if (analysis.currentMeasurement && analysis.totalMeasurements) {
+            measurementBadge.textContent = 'Measurement ' + analysis.currentMeasurement
+                + ' of ' + analysis.totalMeasurements;
+            measurementBadge.style.display = '';
+        } else {
+            measurementBadge.style.display = 'none';
+        }
+    }
+    phaseBadge.textContent = analysis.phase || 'Unknown';
 
     const hasMoreMeasurements = analysis.currentMeasurement && analysis.totalMeasurements
         && analysis.currentMeasurement < analysis.totalMeasurements;
@@ -427,6 +444,20 @@ function appendActivityItem(event) {
         item.classList.add('pause-event');
     } else if (event.type === 'PAUSE_FAILED') {
         item.classList.add('pause-failed-event');
+    } else if (event.type === 'GRADER') {
+        item.classList.add('grader-event');
+        const grader = parseGraderEvent(event);
+        if (grader) {
+            item.classList.add(grader.verdict);
+            updateGraderCard(grader);
+        }
+    } else if (event.type === 'PAUSE_GATE') {
+        item.classList.add('pause-gate-event');
+    } else if (event.type === 'MODEL_ESCALATION') {
+        item.classList.add('escalation-event');
+        // everything the agent publishes after this point came from the
+        // strong tier
+        strongModelActive = true;
     }
 
     let messageHtml = (event.type === 'REMEDIATION')
@@ -442,7 +473,73 @@ function appendActivityItem(event) {
         }
     }
 
+    if (event.type === 'GRADER') {
+        const grader = parseGraderEvent(event);
+        if (grader) {
+            const icons = { supported: '\u2714', neutral: '~', disputed: '\u2718' };
+            messageHtml = '<span class="grader-verdict-chip ' + grader.verdict + '">' +
+                icons[grader.verdict] + ' ' + grader.verdict.charAt(0).toUpperCase() + grader.verdict.slice(1) +
+                '</span><span class="grader-probability">' +
+                Math.round(grader.probability * 100) + '%</span>';
+        }
+    }
+
+    let detailsHtml = event.details ? linkifyDetails(event.details) : '';
+    if (event.type === 'CONFIDENCE_SCORE' && event.details) {
+        const breakdown = event.details.match(/self-reported:\s*(\d+),\s*grader:\s*([\d.]+)/);
+        if (breakdown) {
+            detailsHtml = '<span class="confidence-breakdown">self-reported <strong>' + breakdown[1] +
+                '</strong> &middot; grader <strong>' + breakdown[2] + '</strong></span>';
+        }
+    }
+
+    // analysis conclusions carry a tier badge once the strong model has
+    // taken over, so it is visible which model produced them
+    const tierBadgeHtml = (event.type === 'DECISION' || event.type === 'ANALYSIS_SUMMARY')
+        ? '<span class="tier-badge ' + (strongModelActive ? 'tier-deepseek' : 'tier-qwen') + '">' +
+            (strongModelActive ? 'DeepSeek' : 'Qwen') + '</span>'
+        : '';
+
     let html = '';
+
+    if (event.type === 'PAUSE_GATE') {
+        // the gate is the moment the demo waits on: render it big and loud
+        html = '<div class="activity-dot-indicator ' + typeClass + '"></div>' +
+            '<div class="activity-body">' +
+            '<div class="activity-item-header">' +
+            '<span class="activity-type-badge ' + typeClass + '">Pause Gate</span>' +
+            '<span class="activity-timestamp">' + time + '</span>' +
+            '</div>' +
+            '<div class="pause-gate-body">' +
+            '<span class="pause-gate-icon">&#9208;</span>' +
+            '<div>' +
+            '<div class="activity-message">' + escapeHtml(event.message) + '</div>' +
+            (detailsHtml ? '<div class="activity-details">' + detailsHtml + '</div>' : '') +
+            '<div class="pause-gate-hint">Waiting for human decision</div>' +
+            '</div>' +
+            '</div>';
+        item.innerHTML = html;
+        feed.appendChild(item);
+        lastEventId = Math.max(lastEventId, event.id);
+        feed.scrollTop = feed.scrollHeight;
+        return;
+    }
+
+    if (event.type === 'MODEL_ESCALATION') {
+        html = '<div class="activity-dot-indicator ' + typeClass + '"></div>' +
+            '<div class="activity-body">' +
+            '<div class="activity-item-header">' +
+            '<span class="activity-type-badge ' + typeClass + '">Escalation</span>' +
+            '<span class="activity-timestamp">' + time + '</span>' +
+            '</div>' +
+            '<div class="activity-message">' + messageHtml + '</div>' +
+            escalationFlowHtml(event);
+        item.innerHTML = html;
+        feed.appendChild(item);
+        lastEventId = Math.max(lastEventId, event.id);
+        feed.scrollTop = feed.scrollHeight;
+        return;
+    }
 
     if (event.type === 'DECISION') {
         const isPromote = event.message.includes('PROMOTE');
@@ -452,7 +549,7 @@ function appendActivityItem(event) {
             '<div class="activity-body">' +
             '<div class="activity-item-header">' +
             '<span class="activity-type-badge ' + typeClass + '">' +
-            formatEventType(event.type) + '</span>' +
+            formatEventType(event.type) + '</span>' + tierBadgeHtml +
             '<span class="activity-timestamp">' + time + '</span>' +
             '</div>' +
             '<div class="decision-event-verdict">' +
@@ -465,14 +562,14 @@ function appendActivityItem(event) {
             '<div class="activity-body">' +
             '<div class="activity-item-header">' +
             '<span class="activity-type-badge ' + typeClass + '">' +
-            formatEventType(event.type) + '</span>' +
+            formatEventType(event.type) + '</span>' + tierBadgeHtml +
             '<span class="activity-timestamp">' + time + '</span>' +
             '</div>' +
             '<div class="activity-message">' + messageHtml + '</div>';
     }
 
-    if (event.details) {
-        html += '<div class="activity-details">' + linkifyDetails(event.details) + '</div>';
+    if (detailsHtml) {
+        html += '<div class="activity-details">' + detailsHtml + '</div>';
     }
 
     html += '</div>';
@@ -567,9 +664,85 @@ function formatEventType(type) {
         'ANALYSIS_INSIGHT': 'Insight',
         'CONFIDENCE_SCORE': 'Score',
         'RETRY': 'Retry',
-        'ANALYSIS_SUMMARY': 'Summary'
+        'ANALYSIS_SUMMARY': 'Summary',
+        'GRADER': 'Grader',
+        'PAUSE_GATE': 'Pause Gate',
+        'MODEL_ESCALATION': 'Escalation'
     };
     return labels[type] || type;
+}
+
+// === DECISION MODEL (GRADER) ===
+
+// GRADER events carry "Grader: Supported (0.82)" as the message and
+// "self-reported confidence 85, grader probability 0.82 — supported" as details
+function parseGraderEvent(event) {
+    const titleMatch = event.message.match(/Grader:\s*(Supported|Neutral|Disputed)\s*\(([\d.]+)\)/);
+    if (!titleMatch) return null;
+    const selfMatch = event.details && event.details.match(/self-reported confidence (\d+)/);
+    return {
+        verdict: titleMatch[1].toLowerCase(),
+        probability: parseFloat(titleMatch[2]),
+        selfReported: selfMatch ? parseInt(selfMatch[1], 10) : null
+    };
+}
+
+function updateGraderCard(grader) {
+    const card = document.getElementById('graderCard');
+    if (!card) return;
+
+    card.classList.remove('pending', 'supported', 'neutral', 'disputed');
+    card.classList.add(grader.verdict);
+
+    const needle = document.getElementById('graderNeedle');
+    if (needle) needle.style.left = (grader.probability * 100) + '%';
+
+    const icons = { supported: '\u2714', neutral: '~', disputed: '\u2718' };
+    const verdictBadge = document.getElementById('graderVerdictBadge');
+    if (verdictBadge) {
+        verdictBadge.textContent = icons[grader.verdict] + ' ' +
+            grader.verdict.charAt(0).toUpperCase() + grader.verdict.slice(1);
+    }
+
+    const selfReported = document.getElementById('graderSelfReported');
+    if (selfReported) selfReported.textContent = grader.selfReported !== null ? grader.selfReported : '\u2014';
+    const probability = document.getElementById('graderProbability');
+    if (probability) probability.textContent = grader.probability.toFixed(2);
+}
+
+function resetGraderCard() {
+    const card = document.getElementById('graderCard');
+    if (!card) return;
+    card.classList.remove('supported', 'neutral', 'disputed');
+    card.classList.add('pending');
+    const needle = document.getElementById('graderNeedle');
+    if (needle) needle.style.left = '0%';
+    const verdictBadge = document.getElementById('graderVerdictBadge');
+    if (verdictBadge) verdictBadge.textContent = '\u2014';
+    const selfReported = document.getElementById('graderSelfReported');
+    if (selfReported) selfReported.textContent = '\u2014';
+    const probability = document.getElementById('graderProbability');
+    if (probability) probability.textContent = '\u2014';
+}
+
+// MODEL_ESCALATION details read like:
+// "grader disputed at 0.28 (promote, confidence 70); re-analyzed: rollback, confidence 95"
+function escalationFlowHtml(event) {
+    const details = event.details || '';
+    const before = details.match(/\((promote|rollback), confidence (\d+)\)/);
+    const dispute = details.match(/disputed at ([\d.]+)/);
+    const after = details.match(/re-analyzed:\s*(promote|rollback), confidence (\d+)/);
+    if (!before || !after) return '';
+
+    return '<div class="escalation-flow">' +
+        '<span class="tier-badge tier-qwen">Qwen</span>' +
+        '<span class="escalation-stage">' + before[1] + ' ' + before[2] + '</span>' +
+        '<span class="escalation-arrow">&rarr;</span>' +
+        (dispute ? '<span class="escalation-dispute">disputed ' + dispute[1] + '</span>' +
+        '<span class="escalation-arrow">&rarr;</span>' : '') +
+        '<span class="tier-badge tier-deepseek">DeepSeek</span>' +
+        '<span class="escalation-stage">' + after[1] + ' ' + after[2] + '</span>' +
+        '</div>';
 }
 
 function linkifyDetails(str) {

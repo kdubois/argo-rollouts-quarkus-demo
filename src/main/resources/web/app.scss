@@ -787,6 +787,190 @@ body::before {
     background: rgba(255, 122, 143, 0.06);
 }
 
+// === Grader events ===
+.activity-item.grader-event {
+    border-left: 3px solid rgba(167, 139, 250, 0.9);
+    background: rgba(167, 139, 250, 0.05);
+}
+
+.activity-item.grader-event.supported {
+    border-left-color: rgba(79, 224, 206, 0.95);
+}
+
+.activity-item.grader-event.neutral {
+    border-left-color: rgba(255, 196, 97, 0.95);
+}
+
+.activity-item.grader-event.disputed {
+    border-left-color: rgba(255, 122, 143, 0.95);
+}
+
+.activity-dot-indicator.grader {
+    background: #b9a1ff;
+}
+
+.activity-type-badge.grader {
+    color: #e2d8ff;
+    border-color: rgba(167, 139, 250, 0.6);
+}
+
+.grader-verdict-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border: 1px solid;
+    padding: 2px 7px;
+    margin-right: 8px;
+}
+
+.grader-verdict-chip.supported {
+    color: #8cf4e6;
+    border-color: rgba(79, 224, 206, 0.6);
+    background: rgba(79, 224, 206, 0.08);
+}
+
+.grader-verdict-chip.neutral {
+    color: #ffe1ae;
+    border-color: rgba(255, 196, 97, 0.6);
+    background: rgba(255, 196, 97, 0.08);
+}
+
+.grader-verdict-chip.disputed {
+    color: #ffafbf;
+    border-color: rgba(255, 122, 143, 0.6);
+    background: rgba(255, 122, 143, 0.08);
+}
+
+.grader-probability {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+// === Pause gate events: the moment the demo waits on, render it big ===
+.activity-item.pause-gate-event {
+    border-left: 4px solid rgba(255, 196, 97, 0.95);
+    background: rgba(255, 196, 97, 0.08);
+    padding: 14px 14px;
+}
+
+.activity-dot-indicator.pause-gate {
+    background: var(--signal-amber);
+}
+
+.activity-type-badge.pause-gate {
+    color: #ffe1ae;
+    border-color: rgba(255, 196, 97, 0.65);
+}
+
+.pause-gate-body {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.pause-gate-icon {
+    font-size: 1.3rem;
+    line-height: 1;
+    color: var(--signal-amber);
+}
+
+.pause-gate-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 7px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.63rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #ffe1ae;
+    border: 1px dashed rgba(255, 196, 97, 0.6);
+    padding: 3px 8px;
+    animation: statusPulse 1.6s ease-in-out infinite;
+}
+
+// === Model escalation events: the tier transition ===
+.activity-item.escalation-event {
+    border-left: 4px solid rgba(143, 166, 255, 0.95);
+    background: rgba(111, 140, 255, 0.07);
+    padding: 12px 14px;
+}
+
+.activity-dot-indicator.model-escalation {
+    background: #8fa6ff;
+}
+
+.activity-type-badge.model-escalation {
+    color: #c9d6ff;
+    border-color: rgba(143, 166, 255, 0.6);
+}
+
+.escalation-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px;
+    margin-top: 6px;
+}
+
+.escalation-stage {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.escalation-arrow {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+}
+
+.escalation-dispute {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #ffafbf;
+    border: 1px solid rgba(255, 122, 143, 0.55);
+    background: rgba(255, 122, 143, 0.08);
+    padding: 2px 7px;
+}
+
+// === Model tier badges ===
+.tier-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border: 1px solid;
+    padding: 2px 6px;
+}
+
+.tier-badge.tier-qwen {
+    color: #a9d0ff;
+    border-color: rgba(111, 178, 255, 0.55);
+    background: rgba(111, 178, 255, 0.07);
+}
+
+.tier-badge.tier-deepseek {
+    color: #d9c8ff;
+    border-color: rgba(167, 139, 250, 0.6);
+    background: rgba(167, 139, 250, 0.08);
+}
+
+.confidence-breakdown {
+    strong {
+        color: #dce6fa;
+    }
+}
+
 .score-value {
     font-size: 1.08rem;
     font-weight: 700;
@@ -806,7 +990,7 @@ body::before {
 
 .info-panel {
     display: grid;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto 1fr;
     gap: 10px;
     min-height: 0;
 }
@@ -962,6 +1146,192 @@ body::before {
     word-break: break-word;
     max-height: 120px;
     overflow-y: auto;
+}
+
+.decision-header-badges {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.measurement-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 3px 8px;
+    border: 1px solid rgba(111, 178, 255, 0.55);
+    color: #a9d0ff;
+    background: rgba(111, 178, 255, 0.07);
+}
+
+// === Decision Model (grader) card ===
+.grader-card {
+    border: 1px solid var(--line);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.015), 0 4px 10px var(--shadow);
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    padding: 12px 14px;
+    transition: border-color 300ms ease;
+}
+
+.grader-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.grader-title-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.grader-title {
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.62rem;
+    color: #8ba3cb;
+}
+
+.grader-model-badge {
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #d9c8ff;
+    border: 1px solid rgba(167, 139, 250, 0.55);
+    background: rgba(167, 139, 250, 0.08);
+    padding: 2px 8px;
+}
+
+.grader-verdict-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 3px 9px;
+    border: 1px solid var(--line);
+    color: var(--text-soft);
+}
+
+.grader-card.supported {
+    border-color: rgba(79, 224, 206, 0.55);
+
+    .grader-verdict-badge {
+        color: #83f4e4;
+        border-color: rgba(79, 224, 206, 0.55);
+    }
+}
+
+.grader-card.neutral {
+    border-color: rgba(255, 196, 97, 0.55);
+
+    .grader-verdict-badge {
+        color: #ffe1ae;
+        border-color: rgba(255, 196, 97, 0.55);
+    }
+}
+
+.grader-card.disputed {
+    border-color: rgba(255, 122, 143, 0.55);
+
+    .grader-verdict-badge {
+        color: #ffc1cc;
+        border-color: rgba(255, 122, 143, 0.55);
+    }
+}
+
+.grader-card.pending .grader-gauge {
+    opacity: 0.45;
+}
+
+.grader-gauge-track {
+    position: relative;
+    display: flex;
+    height: 30px;
+    border: 1px solid var(--line);
+}
+
+.grader-zone {
+    height: 100%;
+}
+
+.grader-zone-disputed {
+    width: 30%;
+    background: linear-gradient(180deg, rgba(255, 122, 143, 0.55), rgba(255, 122, 143, 0.28));
+    border-right: 1px solid rgba(255, 122, 143, 0.7);
+}
+
+.grader-zone-neutral {
+    width: 20%;
+    background: linear-gradient(180deg, rgba(255, 196, 97, 0.55), rgba(255, 196, 97, 0.28));
+    border-right: 1px solid rgba(255, 196, 97, 0.7);
+}
+
+.grader-zone-supported {
+    flex: 1;
+    background: linear-gradient(180deg, rgba(79, 224, 206, 0.55), rgba(79, 224, 206, 0.28));
+}
+
+.grader-needle {
+    position: absolute;
+    top: -5px;
+    bottom: -5px;
+    width: 4px;
+    transform: translateX(-50%);
+    background: #ffffff;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.75);
+    transition: left 0.6s cubic-bezier(0.3, 1, 0.35, 1);
+}
+
+.grader-scale {
+    position: relative;
+    height: 15px;
+    margin-top: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+
+    span {
+        position: absolute;
+        transform: translateX(-50%);
+    }
+
+    span:nth-child(1) {
+        left: 0;
+        transform: none;
+    }
+
+    span:nth-child(2) {
+        left: 30%;
+    }
+
+    span:nth-child(3) {
+        left: 50%;
+    }
+
+    span:nth-child(4) {
+        left: 100%;
+        transform: translateX(-100%);
+    }
+}
+
+.grader-values {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-soft);
+
+    strong {
+        color: var(--text-main);
+        font-size: 0.86rem;
+    }
 }
 
 .graph-card,
@@ -1333,13 +1703,160 @@ body.projector-mode .stage-pip.paused .pip-label {
     color: #8f6413;
 }
 
+// === Projector mode: grader card, gate controls, new feed events ===
+body.projector-mode .grader-card {
+    box-shadow: none;
+}
+
+body.projector-mode .grader-card.supported {
+    border-color: rgba(12, 152, 127, 0.55);
+
+    .grader-verdict-badge {
+        color: #0c987f;
+        border-color: rgba(12, 152, 127, 0.55);
+    }
+}
+
+body.projector-mode .grader-card.neutral {
+    border-color: rgba(180, 120, 20, 0.55);
+
+    .grader-verdict-badge {
+        color: #8f6413;
+        border-color: rgba(180, 120, 20, 0.55);
+    }
+}
+
+body.projector-mode .grader-card.disputed {
+    border-color: rgba(199, 64, 96, 0.55);
+
+    .grader-verdict-badge {
+        color: #c74060;
+        border-color: rgba(199, 64, 96, 0.55);
+    }
+}
+
+body.projector-mode .grader-model-badge {
+    color: #5b3fa8;
+    border-color: rgba(91, 63, 168, 0.4);
+    background: rgba(91, 63, 168, 0.07);
+}
+
+body.projector-mode .grader-needle {
+    background: #1c2b46;
+    box-shadow: 0 0 6px rgba(28, 43, 70, 0.4);
+}
+
+body.projector-mode .grader-probability {
+    color: #172844;
+}
+
+body.projector-mode .measurement-badge {
+    color: #2a5aa2;
+    border-color: rgba(42, 90, 162, 0.4);
+    background: rgba(42, 90, 162, 0.07);
+}
+
+body.projector-mode .activity-item.grader-event {
+    background: rgba(91, 63, 168, 0.05);
+}
+
+body.projector-mode .activity-item.grader-event.supported {
+    border-left-color: rgba(12, 152, 127, 0.85);
+}
+
+body.projector-mode .activity-item.grader-event.neutral {
+    border-left-color: rgba(180, 120, 20, 0.85);
+}
+
+body.projector-mode .activity-item.grader-event.disputed {
+    border-left-color: rgba(199, 64, 96, 0.85);
+}
+
+body.projector-mode .activity-type-badge.grader {
+    color: #5b3fa8;
+    border-color: rgba(91, 63, 168, 0.4);
+}
+
+body.projector-mode .grader-verdict-chip.supported {
+    color: #0b6e5c;
+    border-color: rgba(12, 152, 127, 0.5);
+    background: rgba(12, 152, 127, 0.07);
+}
+
+body.projector-mode .grader-verdict-chip.neutral {
+    color: #8f6413;
+    border-color: rgba(180, 120, 20, 0.5);
+    background: rgba(180, 120, 20, 0.07);
+}
+
+body.projector-mode .grader-verdict-chip.disputed {
+    color: #a33050;
+    border-color: rgba(199, 64, 96, 0.5);
+    background: rgba(199, 64, 96, 0.07);
+}
+
+body.projector-mode .activity-item.pause-gate-event {
+    border-left-color: rgba(180, 120, 20, 0.9);
+    background: rgba(180, 120, 20, 0.08);
+}
+
+body.projector-mode .activity-type-badge.pause-gate {
+    color: #8f6413;
+    border-color: rgba(180, 120, 20, 0.5);
+}
+
+body.projector-mode .pause-gate-icon {
+    color: #b47814;
+}
+
+body.projector-mode .pause-gate-hint {
+    color: #8f6413;
+    border-color: rgba(180, 120, 20, 0.55);
+}
+
+body.projector-mode .activity-item.escalation-event {
+    border-left-color: rgba(72, 96, 180, 0.85);
+    background: rgba(72, 96, 180, 0.06);
+}
+
+body.projector-mode .activity-type-badge.model-escalation {
+    color: #375daa;
+    border-color: rgba(55, 93, 170, 0.45);
+}
+
+body.projector-mode .escalation-stage {
+    color: #172844;
+}
+
+body.projector-mode .escalation-dispute {
+    color: #a33050;
+    border-color: rgba(199, 64, 96, 0.5);
+    background: rgba(199, 64, 96, 0.06);
+}
+
+body.projector-mode .tier-badge.tier-qwen {
+    color: #2a5aa2;
+    border-color: rgba(42, 90, 162, 0.45);
+    background: rgba(42, 90, 162, 0.06);
+}
+
+body.projector-mode .tier-badge.tier-deepseek {
+    color: #5b3fa8;
+    border-color: rgba(91, 63, 168, 0.45);
+    background: rgba(91, 63, 168, 0.06);
+}
+
+body.projector-mode .confidence-breakdown strong {
+    color: #1c2b46;
+}
+
 @media (max-width: 1220px) {
     .main-content {
         grid-template-columns: 1fr;
     }
 
     .info-panel {
-        grid-template-rows: auto auto;
+        grid-template-rows: auto auto auto;
     }
 }
 

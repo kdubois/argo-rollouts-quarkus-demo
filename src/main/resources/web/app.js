@@ -310,11 +310,11 @@ function updateDecisionCard(analysis, rolloutPhase) {
     } else if (analysis.successful === true) {
         card.classList.add('promote');
         verdictIcon.textContent = '\u2714';
-        verdictText.textContent = 'Promote recommended';
+        verdictText.textContent = 'Canary healthy — continuing';
     } else if (analysis.successful === false) {
         card.classList.add('rollback');
         verdictIcon.textContent = '\u2718';
-        verdictText.textContent = 'Rollback recommended';
+        verdictText.textContent = 'Canary unhealthy — rolling back';
     } else if (analysis.phase === 'Error') {
         card.classList.add('error');
         verdictIcon.textContent = '\u26A0';
@@ -499,7 +499,7 @@ function appendActivityItem(event) {
         }
     }
 
-    // analysis conclusions carry a tier badge once the strong model has
+    // analysis conclusions carry a tier badge once the second-opinion model has
     // taken over, so it is visible which model produced them
     const tierBadgeHtml = (event.type === 'DECISION' || event.type === 'ANALYSIS_SUMMARY')
         ? '<span class="tier-badge ' + (strongModelActive ? 'tier-deepseek' : 'tier-qwen') + '">' +
@@ -549,8 +549,6 @@ function appendActivityItem(event) {
 
     if (event.type === 'DECISION') {
         const isPromote = event.message.includes('Continue');
-        const verdictIcon = isPromote ? '\u2714' : '\u2718';
-        const verdictLabel = isPromote ? 'Continue' : 'Rollback';
         html = '<div class="activity-dot-indicator ' + typeClass + '"></div>' +
             '<div class="activity-body">' +
             '<div class="activity-item-header">' +
@@ -559,8 +557,8 @@ function appendActivityItem(event) {
             '<span class="activity-timestamp">' + time + '</span>' +
             '</div>' +
             '<div class="decision-event-verdict">' +
-            '<span class="decision-event-icon">' + verdictIcon + '</span>' +
-            '<span class="decision-event-label">' + verdictLabel + '</span>' +
+            '<span class="decision-event-icon">' + (isPromote ? '\u2714' : '\u2718') + '</span>' +
+            '<span class="decision-event-label">' + (isPromote ? 'Continue' : 'Rollback') + '</span>' +
             '</div>' +
             '<div class="activity-message">' + messageHtml + '</div>';
     } else {

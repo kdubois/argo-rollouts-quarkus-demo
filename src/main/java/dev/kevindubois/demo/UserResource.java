@@ -20,26 +20,15 @@ public class UserResource {
     @Path("/{id}")
     public Response getUser(@PathParam("id") String userId) {
         LOG.debug("Fetching user: " + userId);
-        
-        if (!nullPointerBugEnabled) {
-            // Safe implementation when bug is disabled
-            User user = findUser(userId);
-            if (user == null) {
-                return Response.status(404)
-                    .entity(Map.of("error", "User not found"))
-                    .build();
-            }
-            return Response.ok()
-                .entity(Map.of("id", userId, "name", user.getName()))
+
+        User user = findUser(userId);
+        if (user == null) {
+            return Response.status(404)
+                .entity(Map.of("error", "User not found"))
                 .build();
         }
-        
-        // BUG: No null check when bug is enabled
-        User user = findUser(userId);
-        String userName = user.getName(); // Line 39 - NPE HERE when user is null!
-        
         return Response.ok()
-            .entity(Map.of("id", userId, "name", userName))
+            .entity(Map.of("id", userId, "name", user.getName()))
             .build();
     }
     

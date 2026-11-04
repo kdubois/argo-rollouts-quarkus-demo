@@ -820,20 +820,20 @@ body::before {
 }
 
 // === Grader events ===
-.activity-item.grader-event {
+.activity-item.quality-event {
     border-left: 3px solid rgba(167, 139, 250, 0.9);
     background: rgba(167, 139, 250, 0.05);
 }
 
-.activity-item.grader-event.supported {
+.activity-item.quality-event.supported {
     border-left-color: rgba(79, 224, 206, 0.95);
 }
 
-.activity-item.grader-event.neutral {
+.activity-item.quality-event.neutral {
     border-left-color: rgba(255, 196, 97, 0.95);
 }
 
-.activity-item.grader-event.disputed {
+.activity-item.quality-event.disputed {
     border-left-color: rgba(255, 122, 143, 0.95);
 }
 
@@ -846,7 +846,7 @@ body::before {
     border-color: rgba(167, 139, 250, 0.6);
 }
 
-.grader-verdict-chip {
+.quality-verdict-chip {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -860,25 +860,25 @@ body::before {
     margin-right: 8px;
 }
 
-.grader-verdict-chip.supported {
+.quality-verdict-chip.supported {
     color: #8cf4e6;
     border-color: rgba(79, 224, 206, 0.6);
     background: rgba(79, 224, 206, 0.08);
 }
 
-.grader-verdict-chip.neutral {
+.quality-verdict-chip.neutral {
     color: #ffe1ae;
     border-color: rgba(255, 196, 97, 0.6);
     background: rgba(255, 196, 97, 0.08);
 }
 
-.grader-verdict-chip.disputed {
+.quality-verdict-chip.disputed {
     color: #ffafbf;
     border-color: rgba(255, 122, 143, 0.6);
     background: rgba(255, 122, 143, 0.08);
 }
 
-.grader-probability {
+.quality-probability {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 1.02rem;
     font-weight: 700;
@@ -1279,7 +1279,7 @@ body::before {
 }
 
 // === Decision Model (grader) card ===
-.grader-card {
+.quality-card {
     border: 1px solid var(--line);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.015), 0 4px 10px var(--shadow);
     background: linear-gradient(180deg, var(--panel), var(--panel-2));
@@ -1287,20 +1287,20 @@ body::before {
     transition: border-color 300ms ease;
 }
 
-.grader-header {
+.quality-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
 }
 
-.grader-title-group {
+.quality-title-group {
     display: inline-flex;
     align-items: center;
     gap: 8px;
 }
 
-.grader-title {
+.quality-title {
     font-family: 'IBM Plex Mono', monospace;
     text-transform: uppercase;
     letter-spacing: 0.14em;
@@ -1308,7 +1308,7 @@ body::before {
     color: #8ba3cb;
 }
 
-.grader-model-badge {
+.quality-model-badge {
     font-family: 'Chakra Petch', sans-serif;
     font-size: 0.74rem;
     font-weight: 600;
@@ -1320,7 +1320,7 @@ body::before {
     padding: 2px 8px;
 }
 
-.grader-verdict-badge {
+.quality-verdict-badge {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.68rem;
     font-weight: 700;
@@ -1331,66 +1331,66 @@ body::before {
     color: var(--text-soft);
 }
 
-.grader-card.supported {
+.quality-card.supported {
     border-color: rgba(79, 224, 206, 0.55);
 
-    .grader-verdict-badge {
+    .quality-verdict-badge {
         color: #83f4e4;
         border-color: rgba(79, 224, 206, 0.55);
     }
 }
 
-.grader-card.neutral {
+.quality-card.neutral {
     border-color: rgba(255, 196, 97, 0.55);
 
-    .grader-verdict-badge {
+    .quality-verdict-badge {
         color: #ffe1ae;
         border-color: rgba(255, 196, 97, 0.55);
     }
 }
 
-.grader-card.disputed {
+.quality-card.disputed {
     border-color: rgba(255, 122, 143, 0.55);
 
-    .grader-verdict-badge {
+    .quality-verdict-badge {
         color: #ffc1cc;
         border-color: rgba(255, 122, 143, 0.55);
     }
 }
 
-.grader-card.pending .grader-gauge {
+.quality-card.pending .quality-gauge {
     opacity: 0.45;
 }
 
-.grader-gauge-track {
+.quality-gauge-track {
     position: relative;
     display: flex;
     height: 30px;
     border: 1px solid var(--line);
 }
 
-.grader-zone {
+.quality-zone {
     height: 100%;
 }
 
-.grader-zone-disputed {
+.quality-zone-disputed {
     width: 30%;
     background: linear-gradient(180deg, rgba(255, 122, 143, 0.55), rgba(255, 122, 143, 0.28));
     border-right: 1px solid rgba(255, 122, 143, 0.7);
 }
 
-.grader-zone-neutral {
+.quality-zone-neutral {
     width: 20%;
     background: linear-gradient(180deg, rgba(255, 196, 97, 0.55), rgba(255, 196, 97, 0.28));
     border-right: 1px solid rgba(255, 196, 97, 0.7);
 }
 
-.grader-zone-supported {
+.quality-zone-supported {
     flex: 1;
     background: linear-gradient(180deg, rgba(79, 224, 206, 0.55), rgba(79, 224, 206, 0.28));
 }
 
-.grader-needle {
+.quality-needle {
     position: absolute;
     top: -5px;
     bottom: -5px;
@@ -1401,7 +1401,7 @@ body::before {
     transition: left 0.6s cubic-bezier(0.3, 1, 0.35, 1);
 }
 
-.grader-scale {
+.quality-scale {
     position: relative;
     height: 15px;
     margin-top: 4px;
@@ -1433,7 +1433,7 @@ body::before {
     }
 }
 
-.grader-values {
+.quality-values {
     display: flex;
     justify-content: space-between;
     margin-top: 8px;
@@ -1817,49 +1817,49 @@ body.projector-mode .stage-pip.paused .pip-label {
 }
 
 // === Projector mode: grader card, gate controls, new feed events ===
-body.projector-mode .grader-card {
+body.projector-mode .quality-card {
     box-shadow: none;
 }
 
-body.projector-mode .grader-card.supported {
+body.projector-mode .quality-card.supported {
     border-color: rgba(12, 152, 127, 0.55);
 
-    .grader-verdict-badge {
+    .quality-verdict-badge {
         color: #0c987f;
         border-color: rgba(12, 152, 127, 0.55);
     }
 }
 
-body.projector-mode .grader-card.neutral {
+body.projector-mode .quality-card.neutral {
     border-color: rgba(180, 120, 20, 0.55);
 
-    .grader-verdict-badge {
+    .quality-verdict-badge {
         color: #8f6413;
         border-color: rgba(180, 120, 20, 0.55);
     }
 }
 
-body.projector-mode .grader-card.disputed {
+body.projector-mode .quality-card.disputed {
     border-color: rgba(199, 64, 96, 0.55);
 
-    .grader-verdict-badge {
+    .quality-verdict-badge {
         color: #c74060;
         border-color: rgba(199, 64, 96, 0.55);
     }
 }
 
-body.projector-mode .grader-model-badge {
+body.projector-mode .quality-model-badge {
     color: #5b3fa8;
     border-color: rgba(91, 63, 168, 0.4);
     background: rgba(91, 63, 168, 0.07);
 }
 
-body.projector-mode .grader-needle {
+body.projector-mode .quality-needle {
     background: #1c2b46;
     box-shadow: 0 0 6px rgba(28, 43, 70, 0.4);
 }
 
-body.projector-mode .grader-probability {
+body.projector-mode .quality-probability {
     color: #172844;
 }
 
@@ -1893,19 +1893,19 @@ body.projector-mode .traffic-bar.held {
     border-color: rgba(180, 120, 20, 0.85);
 }
 
-body.projector-mode .activity-item.grader-event {
+body.projector-mode .activity-item.quality-event {
     background: rgba(91, 63, 168, 0.05);
 }
 
-body.projector-mode .activity-item.grader-event.supported {
+body.projector-mode .activity-item.quality-event.supported {
     border-left-color: rgba(12, 152, 127, 0.85);
 }
 
-body.projector-mode .activity-item.grader-event.neutral {
+body.projector-mode .activity-item.quality-event.neutral {
     border-left-color: rgba(180, 120, 20, 0.85);
 }
 
-body.projector-mode .activity-item.grader-event.disputed {
+body.projector-mode .activity-item.quality-event.disputed {
     border-left-color: rgba(199, 64, 96, 0.85);
 }
 
@@ -1914,19 +1914,19 @@ body.projector-mode .activity-type-badge.grader {
     border-color: rgba(91, 63, 168, 0.4);
 }
 
-body.projector-mode .grader-verdict-chip.supported {
+body.projector-mode .quality-verdict-chip.supported {
     color: #0b6e5c;
     border-color: rgba(12, 152, 127, 0.5);
     background: rgba(12, 152, 127, 0.07);
 }
 
-body.projector-mode .grader-verdict-chip.neutral {
+body.projector-mode .quality-verdict-chip.neutral {
     color: #8f6413;
     border-color: rgba(180, 120, 20, 0.5);
     background: rgba(180, 120, 20, 0.07);
 }
 
-body.projector-mode .grader-verdict-chip.disputed {
+body.projector-mode .quality-verdict-chip.disputed {
     color: #a33050;
     border-color: rgba(199, 64, 96, 0.5);
     background: rgba(199, 64, 96, 0.07);

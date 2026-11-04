@@ -428,11 +428,11 @@ function appendActivityItem(event) {
     const item = document.createElement('div');
     item.className = 'activity-item';
 
-    const grader = event.type === 'GRADER' ? parseGraderEvent(event) : null;
+    const grader = event.type === 'QUALITY_CHECK' ? parseGraderEvent(event) : null;
 
     if (event.type === 'DECISION') {
         item.classList.add('decision-event');
-        if (event.message.includes('PROMOTE')) item.classList.add('promote');
+        if (event.message.includes('Continue')) item.classList.add('promote');
         else item.classList.add('rollback');
     } else if (event.type === 'ERROR') {
         item.classList.add('error-event');
@@ -454,7 +454,7 @@ function appendActivityItem(event) {
         item.classList.add('pause-event');
     } else if (event.type === 'PAUSE_FAILED') {
         item.classList.add('pause-failed-event');
-    } else if (event.type === 'GRADER') {
+    } else if (event.type === 'QUALITY_CHECK') {
         item.classList.add('grader-event');
         if (grader) {
             item.classList.add(grader.verdict);
@@ -548,9 +548,9 @@ function appendActivityItem(event) {
     }
 
     if (event.type === 'DECISION') {
-        const isPromote = event.message.includes('PROMOTE');
+        const isPromote = event.message.includes('Continue');
         const verdictIcon = isPromote ? '\u2714' : '\u2718';
-        const verdictLabel = isPromote ? 'Promote' : 'Rollback';
+        const verdictLabel = isPromote ? 'Continue' : 'Rollback';
         html = '<div class="activity-dot-indicator ' + typeClass + '"></div>' +
             '<div class="activity-body">' +
             '<div class="activity-item-header">' +
@@ -671,8 +671,8 @@ function formatEventType(type) {
         'CONFIDENCE_SCORE': 'Score',
         'RETRY': 'Retry',
         'ANALYSIS_SUMMARY': 'Summary',
-        'GRADER': 'Grader',
-        'PAUSE_GATE': 'Pause Gate',
+        'QUALITY_CHECK': 'Quality',
+        'PAUSE_GATE': 'Held',
         'MODEL_ESCALATION': 'Escalation'
     };
     return labels[type] || type;
@@ -680,15 +680,15 @@ function formatEventType(type) {
 
 // === DECISION MODEL (GRADER) ===
 
-// GRADER events carry "Grader: Supported (0.82)" as the message and
-// "self-reported confidence 85, grader probability 0.82 — supported" as details
+// QUALITY_CHECK events carry "Quality check: supported (82/100)" as the message and
+// "analysis confidence 85/100, quality score 82/100 — supported" as details
 function parseGraderEvent(event) {
-    const titleMatch = event.message.match(/Grader:\s*(Supported|Neutral|Disputed)\s*\(([\d.]+)\)/);
+    const titleMatch = event.message.match(/Quality check:\s*(supported|neutral|disputed)\s*\((\d+)\/100\)/);
     if (!titleMatch) return null;
-    const selfMatch = event.details && event.details.match(/self-reported confidence (\d+)/);
+    const selfMatch = event.details && event.details.match(/analysis confidence (\d+)/);
     return {
         verdict: titleMatch[1].toLowerCase(),
-        probability: parseFloat(titleMatch[2]),
+        probability: parseInt(titleMatch[2], 10) / 100,
         selfReported: selfMatch ? parseInt(selfMatch[1], 10) : null
     };
 }
@@ -712,7 +712,7 @@ function updateGraderCard(grader) {
 
     const selfReported = document.getElementById('graderSelfReported');
     if (selfReported) selfReported.textContent = grader.selfReported !== null ? grader.selfReported : '\u2014';
-    const probability = document.getElementById('graderProbability');
+    const probability = document.getElementById('qualityScore');
     if (probability) probability.textContent = grader.probability.toFixed(2);
 }
 
@@ -727,7 +727,7 @@ function resetGraderCard() {
     if (verdictBadge) verdictBadge.textContent = '\u2014';
     const selfReported = document.getElementById('graderSelfReported');
     if (selfReported) selfReported.textContent = '\u2014';
-    const probability = document.getElementById('graderProbability');
+    const probability = document.getElementById('qualityScore');
     if (probability) probability.textContent = '\u2014';
 }
 

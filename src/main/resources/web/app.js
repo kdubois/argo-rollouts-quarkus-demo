@@ -459,6 +459,10 @@ function appendActivityItem(event) {
         if (grader) {
             item.classList.add(grader.verdict);
             updateGraderCard(grader);
+            // the card stays hidden until the first quality check arrives —
+            // it never appears when the decision model is not configured
+            const card = document.getElementById('graderCard');
+            if (card) card.style.display = '';
         }
     } else if (event.type === 'PAUSE_GATE') {
         item.classList.add('pause-gate-event');

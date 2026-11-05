@@ -120,8 +120,10 @@ function updateRolloutProgress(rolloutData) {
     if (phase === 'Progressing' && lastRolloutPhase && lastRolloutPhase !== 'Progressing') {
         revertRequestsBox();
         resetGraderCard();
+        clearActivityFeed();
         secondOpinionActive = false;
         lastAnalysisModel = null;
+        lastRootCause = null;
     }
     lastRolloutPhase = phase;
     // a Degraded rollout has rolled back: the canary serves no traffic,
@@ -442,7 +444,11 @@ function appendActivityItem(event) {
         item.classList.add('error-event');
     } else if (event.type === 'REMEDIATION') {
         item.classList.add('remediation-event');
-        if (!event.message.includes('triggered')) {
+        if (event.message.includes('triggered')) {
+            // the triggered event carries the root cause of the analysis
+            // that requested the fix — the log box shows it as context
+            pendingRemediationContext = event.details;
+        } else {
             // terminal outcome: stop the log clock and surface the result
             // as the log's final line
             const link = event.details && event.details.startsWith('http') ? event.details : null;
@@ -611,6 +617,17 @@ function resetActivityFeed() {
     lastEventId = 0;
 }
 
+/**
+ * Clears the previous rollout's events when a new rollout starts, so the
+ * feed tells one rollout's story at a time. lastEventId stays where it is:
+ * the poll must not re-fetch the events that were just cleared.
+ */
+function clearActivityFeed() {
+    const feed = document.getElementById('activityFeed');
+    if (!feed) return;
+    feed.innerHTML = '<div class="activity-empty" id="activityEmpty">New rollout started — waiting for analysis\u2026</div>';
+}
+
 function setActivityStatus(connected) {
     const status = document.getElementById('activityStatus');
     if (!status) return;
@@ -741,6 +758,9 @@ function updateGraderCard(grader) {
 function resetGraderCard() {
     const card = document.getElementById('graderCard');
     if (!card) return;
+    // hidden again until this rollout's first quality check arrives — the
+    // card never appears when the decision model is not configured
+    card.style.display = 'none';
     card.classList.remove('supported', 'neutral', 'disputed');
     card.classList.add('pending');
     const needle = document.getElementById('graderNeedle');
@@ -884,6 +904,9 @@ let streamTimerInterval = null;
 let streamStartedAt = null;
 let sandboxMisses = 0;
 let lastRootCause = null;
+// the root cause from the REMEDIATION triggered event — deterministic,
+// unlike lastRootCause, which depends on which insight the UI saw last
+let pendingRemediationContext = null;
 
 function startStreamTimer() {
     streamStartedAt = Date.now();
@@ -959,9 +982,9 @@ function startSandboxStream(name) {
         stream.style.display = 'flex';
     }
     if (title) title.firstChild.textContent = 'Remediation Log ';
-    // what this remediation is about — the root cause of the analysis
-    // that triggered it
-    setStreamContext(lastRootCause);
+    // what this remediation is about — the root cause from the triggered
+    // event, falling back to the last insight for older agent builds
+    setStreamContext(pendingRemediationContext || lastRootCause);
     startStreamTimer();
     fetchSandboxLog();
 }
@@ -1040,6 +1063,7 @@ function revertRequestsBox() {
     sandboxDone = false;
     sandboxMisses = 0;
     sandboxRevertTimer = null;
+    pendingRemediationContext = null;
     stopStreamTimer();
     streamStartedAt = null;
     setStreamContext(null);

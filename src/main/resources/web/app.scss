@@ -2112,6 +2112,18 @@ body.projector-mode .confidence-breakdown strong {
     margin-left: 4px;
 }
 
+// what the remediation log is fixing — the root cause of the analysis
+// that triggered the sandbox run
+.stream-context {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.64rem;
+    color: #f5a97f;
+    margin: -4px 0 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 // pulsing accent while the coding agent works — draws the eye to the log
 .requests-card.remediating {
     border-color: rgba(245, 169, 127, 0.45);

@@ -442,12 +442,21 @@ function appendActivityItem(event) {
         item.classList.add('error-event');
     } else if (event.type === 'REMEDIATION') {
         item.classList.add('remediation-event');
-        // surface the PR link in the remediation log box as its final line
-        if (sandboxName && event.details && event.details.startsWith('http')) {
-            appendStreamLine({ type: 'result', text: 'PR: ' + event.details });
+        if (!event.message.includes('triggered')) {
+            // terminal outcome: stop the log clock and surface the result
+            // as the log's final line
+            const link = event.details && event.details.startsWith('http') ? event.details : null;
+            finalizeRemediationStream(link
+                ? { type: 'result', text: (link.includes('/pull/') ? 'PR' : 'Issue') + ': ' + link }
+                : { type: 'wrapper', text: event.details || event.message });
         }
     } else if (event.type === 'ANALYSIS_INSIGHT') {
         item.classList.add('insight-event');
+        // the remediation log shows what it is fixing — the root cause of
+        // the analysis that triggered it
+        if (event.details && event.details.startsWith('Root cause:')) {
+            lastRootCause = event.details;
+        }
     } else if (event.type === 'CONFIDENCE_SCORE') {
         item.classList.add('score-event');
     } else if (event.type === 'RETRY') {
@@ -873,6 +882,8 @@ let sandboxDone = false;
 let sandboxRevertTimer = null;
 let streamTimerInterval = null;
 let streamStartedAt = null;
+let sandboxMisses = 0;
+let lastRootCause = null;
 
 function startStreamTimer() {
     streamStartedAt = Date.now();
@@ -906,21 +917,34 @@ function pollSandbox() {
         })
         .then(active => {
             if (active.name && active.name !== sandboxName) {
+                sandboxMisses = 0;
                 startSandboxStream(active.name);
             } else if (active.name && !sandboxDone) {
+                sandboxMisses = 0;
                 fetchSandboxLog();
+            } else {
+                noteSandboxMiss();
             }
         })
-        .catch(() => {
-            // no active sandbox: leave the finished log visible until the
-            // next rollout starts (phase transition clears it)
-        });
+        .catch(noteSandboxMiss);
+}
+
+/**
+ * The sandbox can vanish between two polls without its log ever reporting
+ * done (the remediation-agent drops it from /active the moment it finishes).
+ * Without this, the log clock runs forever on a finished remediation.
+ */
+function noteSandboxMiss() {
+    if (!sandboxName || sandboxDone) return;
+    if (++sandboxMisses < 3) return;
+    finalizeRemediationStream({ type: 'wrapper', text: 'Sandbox finished — waiting for the GitHub artifact' });
 }
 
 function startSandboxStream(name) {
     sandboxName = name;
     sandboxNextLine = 0;
     sandboxDone = false;
+    sandboxMisses = 0;
     clearTimeout(sandboxRevertTimer);
     sandboxRevertTimer = null;
 
@@ -935,6 +959,9 @@ function startSandboxStream(name) {
         stream.style.display = 'flex';
     }
     if (title) title.firstChild.textContent = 'Remediation Log ';
+    // what this remediation is about — the root cause of the analysis
+    // that triggered it
+    setStreamContext(lastRootCause);
     startStreamTimer();
     fetchSandboxLog();
 }
@@ -947,10 +974,7 @@ function fetchSandboxLog() {
             (data.lines || []).forEach(line => appendStreamLine(line));
             sandboxNextLine = data.next || sandboxNextLine;
             if (data.done) {
-                sandboxDone = true;
-                const title = document.getElementById('requestsTitle');
-                stopStreamTimer();
-                if (title) title.firstChild.textContent = 'Remediation Log ';
+                markRemediationFinished();
             }
         })
         .catch(err => console.debug('Sandbox log unavailable:', err.message));
@@ -977,13 +1001,48 @@ function appendStreamLine(line) {
     stream.scrollTop = stream.scrollHeight;
 }
 
+function setStreamContext(context) {
+    const el = document.getElementById('streamContext');
+    if (!el) return;
+    if (context) {
+        el.textContent = context;
+        el.style.display = 'block';
+    } else {
+        el.textContent = '';
+        el.style.display = 'none';
+    }
+}
+
+/** Stops the clock and the pulsing accent — the log itself stays visible. */
+function markRemediationFinished() {
+    sandboxDone = true;
+    stopStreamTimer();
+    const card = document.getElementById('requestsCard');
+    if (card) card.classList.remove('remediating');
+}
+
+/**
+ * Finalizes the remediation log: stops the clock, clears the pulsing state,
+ * and appends the outcome (artifact link, failure reason, or end of stream)
+ * as the final line.
+ */
+function finalizeRemediationStream(outcome) {
+    markRemediationFinished();
+    const stream = document.getElementById('agentStream');
+    if (outcome && stream && stream.style.display === 'flex') {
+        appendStreamLine(outcome);
+    }
+}
+
 function revertRequestsBox() {
     sandboxName = null;
     sandboxNextLine = 0;
     sandboxDone = false;
+    sandboxMisses = 0;
     sandboxRevertTimer = null;
     stopStreamTimer();
     streamStartedAt = null;
+    setStreamContext(null);
     const card = document.getElementById('requestsCard');
     if (card) card.classList.remove('remediating');
     const box = document.getElementById('requestVisualization');

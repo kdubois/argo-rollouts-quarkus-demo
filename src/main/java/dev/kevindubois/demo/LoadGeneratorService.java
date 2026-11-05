@@ -17,7 +17,10 @@ import java.util.concurrent.atomic.AtomicLong;
  * This enables fast and accurate analysis during canary deployments by ensuring consistent traffic.
  * 
  * The load generator:
- * - Starts automatically when the application starts (after a configurable delay)
+ * - Starts automatically as soon as the application starts, with no delay: the
+ *   canary analysis at the 10% traffic step fires right after the pod becomes
+ *   Ready, so any startup delay leaves a window where the canary has served
+ *   0 requests and its health cannot be verified
  * - Generates configurable requests per second (default: 50 req/sec)
  * - Hits the /api/status endpoint
  * - Runs asynchronously without blocking the main application
@@ -41,9 +44,6 @@ public class LoadGeneratorService {
     @ConfigProperty(name = "load.generator.requests.per.second", defaultValue = "50")
     int requestsPerSecond;
     
-    @ConfigProperty(name = "load.generator.startup.delay", defaultValue = "5s")
-    String startupDelay;
-    
     private final ExecutorService executorService = Executors.newFixedThreadPool(10);
     private final AtomicLong totalGeneratedRequests = new AtomicLong(0);
     private volatile boolean initialized = false;
@@ -52,8 +52,12 @@ public class LoadGeneratorService {
      * Scheduled method that generates load at the configured rate.
      * Runs every second and generates the configured number of requests per second.
      * Quarkus scheduler doesn't support intervals less than 1 second, so we batch the requests.
+     *
+     * No startup delay: the first run fires as soon as the scheduler starts, so a
+     * freshly started canary pod already serves traffic when the rollout's first
+     * analysis at the 10% traffic step runs.
      */
-    @Scheduled(every = "1s", delay = 5, delayUnit = java.util.concurrent.TimeUnit.SECONDS)
+    @Scheduled(every = "1s")
     void generateLoad() {
         if (!enabled) {
             return;

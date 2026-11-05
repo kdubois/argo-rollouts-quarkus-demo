@@ -484,11 +484,11 @@ function appendActivityItem(event) {
         : escapeHtml(event.message);
 
     if (event.type === 'CONFIDENCE_SCORE') {
-        const scoreMatch = event.message.match(/Effective confidence:\s*(\d+)/);
+        const scoreMatch = event.message.match(/Analysis confidence:\s*(\d+)/);
         if (scoreMatch) {
             const score = parseInt(scoreMatch[1]);
             const scoreClass = score >= 70 ? 'score-high' : score >= 50 ? 'score-mid' : 'score-low';
-            messageHtml = 'Effective confidence: <span class="score-value ' + scoreClass + '">' + score + '</span>/100';
+            messageHtml = 'Analysis confidence: <span class="score-value ' + scoreClass + '">' + score + '</span>/100';
         }
     }
 
@@ -500,13 +500,6 @@ function appendActivityItem(event) {
     }
 
     let detailsHtml = event.details ? linkifyDetails(event.details) : '';
-    if (event.type === 'CONFIDENCE_SCORE' && event.details) {
-        const breakdown = event.details.match(/self-reported (\d+)\/100, quality check (\d+)\/100/);
-        if (breakdown) {
-            detailsHtml = '<span class="confidence-breakdown">self-reported <strong>' + breakdown[1] +
-                '</strong> &middot; quality check <strong>' + breakdown[2] + '</strong></span>';
-        }
-    }
 
     // analysis summaries carry the producing model as a "[name]" prefix —
     // show it as a badge on the summary and on the decision that follows

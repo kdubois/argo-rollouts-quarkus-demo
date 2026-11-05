@@ -1021,8 +1021,12 @@ body::before {
 }
 
 .info-panel {
-    display: grid;
-    grid-template-rows: auto auto 1fr;
+    // flex, not grid: the quality card is hidden until the first quality check
+    // (and permanently absent without the decision model), and a grid with
+    // `auto auto 1fr` rows would slide the requests card into the `auto` row
+    // and squash it. Flex sizes the requests card by its flex: 1 instead.
+    display: flex;
+    flex-direction: column;
     gap: 10px;
     min-height: 0;
 }
@@ -1990,10 +1994,6 @@ body.projector-mode .confidence-breakdown strong {
 @media (max-width: 1220px) {
     .main-content {
         grid-template-columns: 1fr;
-    }
-
-    .info-panel {
-        grid-template-rows: auto auto auto;
     }
 }
 

@@ -141,7 +141,13 @@ function updateRolloutProgress(rolloutData) {
 
     // the pause gate holds the rollout when the grader disputes the analysis:
     // Argo Rollouts reports it as a manual pause with a "manually paused" message
+    const wasGateActive = pauseGateActive;
     pauseGateActive = phase === 'Paused' && /manually paused/i.test(rolloutData.message || '');
+    if (wasGateActive && !pauseGateActive) {
+        // the gate resolved — a human resumed or aborted the rollout, so the
+        // waiting hints in the feed stop pulsing and say how it ended
+        resolvePauseGateHints(phase !== 'Degraded');
+    }
     updateTrafficHeld();
     updateGateControls();
 
@@ -798,6 +804,17 @@ function updateTrafficHeld() {
     if (bar) bar.classList.toggle('held', pauseGateActive);
     const badge = document.getElementById('trafficHeldBadge');
     if (badge) badge.classList.toggle('visible', pauseGateActive);
+}
+
+/**
+ * Stops the pulsing "waiting for human decision" hints once the gate has
+ * resolved, and records how: resumed by the human, or aborted to stable.
+ */
+function resolvePauseGateHints(resumed) {
+    document.querySelectorAll('.pause-gate-hint:not(.resolved)').forEach(hint => {
+        hint.classList.add('resolved');
+        hint.textContent = resumed ? 'Resolved \u2014 human resumed the rollout' : 'Resolved \u2014 rolled back to stable';
+    });
 }
 
 function updateGateControls() {

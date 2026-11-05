@@ -435,6 +435,11 @@ body::before {
     flex-direction: column;
     position: relative;
     overflow: hidden;
+    // a step brighter than the shared card border, with a faint glow: the
+    // analysis feed is the dashboard's focal panel and should read as one
+    border-color: #3d5a8a;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.015), 0 4px 10px var(--shadow),
+        0 0 22px rgba(111, 178, 255, 0.08);
 }
 
 
@@ -926,6 +931,13 @@ body::before {
     border: 1px dashed rgba(255, 196, 97, 0.6);
     padding: 3px 8px;
     animation: statusPulse 1.6s ease-in-out infinite;
+}
+
+// the gate resolved — stop the pulse and settle to a quiet record
+.pause-gate-hint.resolved {
+    animation: none;
+    color: #6f85ad;
+    border: 1px solid rgba(111, 133, 173, 0.45);
 }
 
 // === Model escalation events: the tier transition ===

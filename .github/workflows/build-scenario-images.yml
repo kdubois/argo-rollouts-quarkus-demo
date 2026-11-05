@@ -145,9 +145,11 @@ jobs:
       - name: Update the demo rollout image
         run: |
           IMAGE="ghcr.io/kdubois/argo-rollouts-quarkus-demo:${{ env.STABLE_VERSION_TAG }}"
-          sed -i "s|image: ghcr.io/kdubois/argo-rollouts-quarkus-demo:[^ ]*|image: ${IMAGE}|" \
+          # only the active image line — the commented alternatives are the
+          # scenario toggle and must survive this update
+          sed -i "s|^\([[:space:]]*\)image: ghcr.io/kdubois/argo-rollouts-quarkus-demo:[^ ]*|\1image: ${IMAGE}|" \
             workloads/quarkus-rollouts-demo/base/rollout.yaml
-          grep "image: ${IMAGE}" workloads/quarkus-rollouts-demo/base/rollout.yaml
+          grep "^[[:space:]]*image: ${IMAGE}" workloads/quarkus-rollouts-demo/base/rollout.yaml
 
       - name: Open manifest PR
         env:

@@ -514,7 +514,7 @@ function appendActivityItem(event) {
     }
 
     if (grader) {
-        const icons = { supported: '\u2714', neutral: '~', disputed: '\u2718' };
+        const icons = { passed: '\u2714', neutral: '~', failed: '\u2718' };
         messageHtml = '<span class="quality-verdict-chip ' + grader.verdict + '">' +
             icons[grader.verdict] + ' ' + Math.round(grader.probability * 100) + '%</span>' +
             (grader.finding ? escapeHtml(grader.finding) : '');
@@ -722,8 +722,8 @@ function formatEventType(type) {
 
 // === DECISION MODEL (GRADER) ===
 
-// QUALITY_CHECK events carry "Quality check: 83/100 — the conclusion is supported
-// by the evidence" as the message and "decision model (Jev) graded the analysis
+// QUALITY_CHECK events carry "Quality check: 83/100 — the evidence backs the
+// conclusion" as the message and "decision model (Jev) graded the analysis
 // conclusion against the diagnostic data; analysis self-confidence 75/100" as details
 function parseGraderEvent(event) {
     const titleMatch = event.message.match(/Quality check:\s*(\d+)\/100(?:\s*\u2014\s*(.+))?/);
@@ -731,7 +731,7 @@ function parseGraderEvent(event) {
     const score = parseInt(titleMatch[1], 10);
     const selfMatch = event.details && event.details.match(/self-confidence (\d+)/);
     return {
-        verdict: score >= 50 ? 'supported' : score >= 30 ? 'neutral' : 'disputed',
+        verdict: score >= 50 ? 'passed' : score >= 30 ? 'neutral' : 'failed',
         probability: score / 100,
         selfReported: selfMatch ? parseInt(selfMatch[1], 10) : null,
         finding: titleMatch[2] || ''
@@ -742,14 +742,14 @@ function updateGraderCard(grader) {
     const card = document.getElementById('graderCard');
     if (!card) return;
 
-    card.classList.remove('pending', 'supported', 'neutral', 'disputed');
+    card.classList.remove('pending', 'passed', 'neutral', 'failed');
     card.classList.add(grader.verdict);
 
     const needle = document.getElementById('graderNeedle');
     if (needle) needle.style.left = (grader.probability * 100) + '%';
 
-    const icons = { supported: '\u2714', neutral: '~', disputed: '\u2718' };
-    const verdictTexts = { supported: 'Supported', neutral: 'Inconclusive', disputed: 'Not supported' };
+    const icons = { passed: '\u2714', neutral: '~', failed: '\u2718' };
+    const verdictTexts = { passed: 'Passed', neutral: 'Neutral', failed: 'Failed' };
     const verdictBadge = document.getElementById('graderVerdictBadge');
     if (verdictBadge) {
         verdictBadge.textContent = icons[grader.verdict] + ' ' + verdictTexts[grader.verdict];
@@ -767,7 +767,7 @@ function resetGraderCard() {
     // hidden again until this rollout's first quality check arrives — the
     // card never appears when the decision model is not configured
     card.style.display = 'none';
-    card.classList.remove('supported', 'neutral', 'disputed');
+    card.classList.remove('passed', 'neutral', 'failed');
     card.classList.add('pending');
     const needle = document.getElementById('graderNeedle');
     if (needle) needle.style.left = '0%';
@@ -780,17 +780,17 @@ function resetGraderCard() {
 }
 
 // MODEL_ESCALATION details read like:
-// "glm-5-3 said continue (95/100), quality check disputed at 29/100 — DeepSeek-V4.1 re-analyzed: continue (85/100)"
+// "glm-5-3 said continue (95/100), quality check failed at 29/100 — DeepSeek-V4.1 re-analyzed: continue (85/100)"
 function escalationFlowHtml(event) {
     const details = event.details || '';
-    const m = details.match(/(\S+) said (continue|rollback) \((\d+)\/100\), quality check disputed at (\d+)\/100 \u2014 (\S+) re-analyzed: (continue|rollback) \((\d+)\/100\)/);
+    const m = details.match(/(\S+) said (continue|rollback) \((\d+)\/100\), quality check failed at (\d+)\/100 \u2014 (\S+) re-analyzed: (continue|rollback) \((\d+)\/100\)/);
     if (!m) return '';
 
     return '<div class="escalation-flow">' +
         '<span class="tier-badge tier-qwen">' + escapeHtml(m[1]) + '</span>' +
         '<span class="escalation-stage">' + m[2] + ' ' + m[3] + '</span>' +
         '<span class="escalation-arrow">&rarr;</span>' +
-        '<span class="escalation-dispute">disputed ' + m[4] + '</span>' +
+        '<span class="escalation-dispute">failed ' + m[4] + '</span>' +
         '<span class="escalation-arrow">&rarr;</span>' +
         '<span class="tier-badge tier-deepseek">' + escapeHtml(m[5]) + '</span>' +
         '<span class="escalation-stage">' + m[6] + ' ' + m[7] + '</span>' +

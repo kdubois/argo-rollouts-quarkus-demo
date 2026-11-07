@@ -1,6 +1,6 @@
 # Argo Rollouts AI Plugin - Demo Application
 
-[![Build and Push](https://github.com/kdubois/argo-rollouts-quarkus-demo/actions/workflows/build.yml/badge.svg)](https://github.com/kdubois/argo-rollouts-quarkus-demo/actions/workflows/build.yml)
+[![Build and Push](https://github.com/kdubois/argo-rollouts-aiops-dashboard/actions/workflows/build.yml/badge.svg)](https://github.com/kdubois/argo-rollouts-aiops-dashboard/actions/workflows/build.yml)
 
 A demonstration application showcasing AI-powered progressive delivery with Argo Rollouts. This Quarkus-based application integrates with the Argo Rollouts AI Plugin to enable autonomous canary deployment analysis and automated remediation.
 
@@ -9,7 +9,7 @@ A demonstration application showcasing AI-powered progressive delivery with Argo
 - **[Deployment Guide](DEPLOYMENT.md)** - Complete installation and setup instructions
 - **[Demo Script](DEMO_SCRIPT.md)** - Conference presentation guide with step-by-step demo flows
 - **[AI Plugin](https://github.com/kdubois/rollouts-plugin-metric-ai)** - Metric provider plugin documentation
-- **[Kubernetes Agent](https://github.com/carlossg/kubernetes-agent)** - Autonomous AI agent documentation
+- **[Kubernetes Agent](https://github.com/kdubois/kubernetes-aiops-agent)** - Autonomous AI agent documentation
 
 ## Architecture
 
@@ -22,9 +22,9 @@ The demo application is part of a larger system that brings AI-powered analysis 
 │  ┌──────────────────┐                                           │
 │  │   Demo App       │  Quarkus application with:                │
 │  │                  │  - Health endpoints (/q/health)           │
-│  │  Stable: 3 pods  │  - Metrics endpoint (/q/metrics)          │
-│  │  Canary: 1 pod   │  - Dashboard UI (/)                       │
-│  └────────┬─────────┘  - Built-in load generator (50 req/sec)   │
+│  │  Stable + canary │  - Metrics endpoint (/q/metrics)          │
+│  │  pods (10 total) │  - Dashboard UI (/)                       │
+│  └────────┬─────────┘  - Built-in load generator (300 req/sec)  │
 │           │            - Pre-built scenario images:              │
 │           │              • v1.stable (99% success)               │
 │           │              • v2.nullpointer (20% NPE failures)     │
@@ -34,38 +34,45 @@ The demo application is part of a larger system that brings AI-powered analysis 
 │           │ Managed by                                           │
 │           ▼                                                      │
 │  ┌──────────────────┐         ┌────────────────────┐           │
-│  │  Argo Rollouts   │────────▶│  Gateway API       │           │
-│  │                  │         │  (HTTPRoute)       │           │
-│  │  - Canary steps  │         │                    │           │
-│  │  - Analysis runs │         │  10% → 60% → 100%  │           │
+│  │  Argo Rollouts   │────────▶│  OpenShift Route   │           │
+│  │                  │         │                    │           │
+│  │  - Canary steps  │         │  10% → 60% → 100%  │           │
+│  │  - Analysis runs │         │                    │           │
 │  └────────┬─────────┘         └────────────────────┘           │
 │           │                                                      │
 │           │ Triggers analysis                                    │
 │           ▼                                                      │
 │  ┌──────────────────┐                                           │
 │  │   AI Plugin      │  Metric provider that:                    │
-│  │                  │  - Collects pod logs                      │
-│  │  (Go binary)     │  - Delegates to Kubernetes Agent          │
-│  └────────┬─────────┘  - Returns PROCEED/ROLLBACK decision      │
+│  │                  │  - Sends pod selectors to the agent       │
+│  │  (Go binary)     │  - Returns promote or rollback            │
+│  └────────┬─────────┘                                           │
 │           │                                                      │
-│           │ A2A Protocol (HTTP/JSON)                             │
+│           │ HTTP POST /analyze                                   │
 │           ▼                                                      │
 │  ┌──────────────────┐                                           │
 │  │ Kubernetes Agent │  Autonomous AI agent that:                │
-│  │                  │  - Analyzes logs and metrics              │
-│  │  (Quarkus +      │  - Uses LLM (Gemini/OpenAI)               │
-│  │   LangChain4j)   │  - Makes deployment decisions             │
-│  └────────┬─────────┘  - Creates GitHub PRs with fixes          │
+│  │                  │  - Fetches logs and metrics itself        │
+│  │  (Quarkus +      │  - Uses an OpenAI-compatible LLM         │
+│  │   LangChain4j)   │  - Promotes or rolls back                 │
+│  └────────┬─────────┘  - Delegates fixes to remediation agent  │
+│           │                                                      │
+│           │ A2A (rollback with repoUrl)                          │
+│           ▼                                                      │
+│  ┌──────────────────┐                                           │
+│  │ Remediation      │  Sandboxed coding agent that:             │
+│  │ Agent (A2A)      │  - Verifies the fix with tests            │
+│  └────────┬─────────┘  - Opens a PR or an issue                  │
 │           │                                                      │
 └───────────┼──────────────────────────────────────────────────────┘
             │
-            │ Creates PRs/Issues on failure
+            │ Creates PRs or issues on failure
             ▼
    ┌────────────────────┐
    │      GitHub        │  Automated remediation:
    │                    │  - Root cause analysis
-   │   Pull Requests    │  - Proposed code fixes (fixable bugs)
-   │   & Issues         │  - Investigation steps (complex issues)
+   │   Pull Requests    │  - Verified code fixes (code bugs)
+   │   & Issues         │  - Investigation steps (operational issues)
    └────────────────────┘
 ```
 
@@ -73,7 +80,7 @@ The demo application is part of a larger system that brings AI-powered analysis 
 
 ### Progressive Delivery with AI Analysis
 
-The application demonstrates how AI can enhance progressive delivery by analyzing canary deployments in real-time. The system automatically decides whether to proceed with or rollback deployments based on intelligent analysis of logs, metrics, and events.
+The canary analysis runs on the deployment's own logs and metrics. The agent compares stable with canary and decides whether to promote or roll back.
 
 ### Autonomous Decision Making
 
@@ -81,14 +88,14 @@ Unlike traditional metric-based analysis that relies on static thresholds, the A
 
 ### Automated Remediation
 
-When issues are detected, the Kubernetes Agent automatically creates GitHub pull requests with detailed root cause analysis and proposed fixes, enabling rapid response to deployment problems.
+When issues are detected, the Kubernetes Agent delegates to the remediation agent, which opens a GitHub pull request with the fix and its test evidence for a patchable code bug, or an issue with investigation steps for an operational problem.
 
 ### Pre-Built Scenario Images
 
 The application provides four pre-built container images with different behaviors for demonstration purposes:
 
 - **v1.stable** (`ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable`): Healthy application with 99% success rate
-- **v2.nullpointer** (`ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer`): NullPointerException bug affecting 20% of requests
+- **v2.nullpointer** (`ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer`): NullPointerException bug on 20% of user lookups
 - **v3.memoryleak** (`ghcr.io/kdubois/argo-rollouts-quarkus-demo:v3.memoryleak`): Memory leak causing gradual performance degradation
 - **v4.latency** (`ghcr.io/kdubois/argo-rollouts-quarkus-demo:v4.latency`): Progressive latency drift with no errors in logs - a metrics-only regression
 
@@ -116,11 +123,17 @@ Container images are tagged with:
 - `v1.stable`, `v2.nullpointer`, `v3.memoryleak`, `v4.latency` - Scenario-specific images
 - `stable-latest`, `null-pointer-bug-latest`, `memory-leak-latest`, `latency-drift-latest` - Latest builds of each scenario
 
+Merging to `main` also tags the stable build with an immutable `stable-<commit sha>` tag and opens a PR in
+[progressive-delivery](https://github.com/kdubois/progressive-delivery) pointing the demo rollout at that build. Merge the
+PR and Argo CD rolls it out through the canary analysis. Scenario switching (`v2.nullpointer`, `v3.memoryleak`, …) stays a
+one-line manifest edit. The manifest PR needs the `PROGRESSIVE_DELIVERY_TOKEN` repo secret: a token with contents
+read/write and pull-request write access to `kdubois/progressive-delivery`.
+
 ## Quick Start
 
 ### Prerequisites
 
-- Java 21 or later
+- Java 25 or later
 - Maven 3.8 or later
 - Docker (for containerization)
 - Kubernetes cluster (for deployment)
@@ -217,63 +230,69 @@ For the full setup including Argo Rollouts and the AI plugin, see the [Deploymen
 
 ### Switching Between Scenarios
 
-Bug scenarios are **baked into the container images** at build time, not configured via environment variables. To switch scenarios, change the image tag:
+Bug scenarios are **baked into the container images** at build time, not configured via environment variables. The active image is a line in the `Rollout` manifest in the [progressive-delivery](../progressive-delivery) repository, so scenario changes go through Git:
 
 ```bash
-# Deploy stable version (99% success rate)
-kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable -n quarkus-demo
-
-# Deploy NullPointerException bug (20% failure rate)
-kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer -n quarkus-demo
-
-# Deploy memory leak (gradual degradation)
-kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v3.memoryleak -n quarkus-demo
-
-# Deploy latency drift (metrics-only regression)
-kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v4.latency -n quarkus-demo
+cd ../progressive-delivery
+# Uncomment the image line for the scenario you want, comment the current one
+vim workloads/quarkus-rollouts-demo/base/rollout.yaml
+git add . && git commit -m "demo: run the memory leak scenario" && git push
 ```
+
+Argo CD syncs the new image and Argo Rollouts starts a canary. The available tags are:
+
+| Image | Behaviour |
+|---|---|
+| `ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable` | Healthy baseline, 99% success |
+| `ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer` | NullPointerException on 20% of user lookups |
+| `ghcr.io/kdubois/argo-rollouts-quarkus-demo:v3.memoryleak` | Allocates 1MB per request, latency climbs to 300ms |
+| `ghcr.io/kdubois/argo-rollouts-quarkus-demo:v4.latency` | Latency drifts after 20s, no errors in logs |
 
 See [SCENARIOS.md](SCENARIOS.md) for detailed information about each scenario.
 
 ## Demo Scenarios
 
+Each rollout gets two analyses: one during the initial 10% pause, and one at 60% weight. Both must pass before full promotion.
+
 ### Scenario 1: Successful Deployment
 
-Deploy a new version and watch the AI analyze and promote it:
+Deploy a version and watch the AI analyze and promote it:
 
 ```bash
-# Trigger a new rollout with stable image
-kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable -n quarkus-demo
-
-# Watch the analysis
+# In progressive-delivery: set the rollout image to v1.stable, commit, push
 kubectl argo rollouts get rollout quarkus-demo -n quarkus-demo --watch
 ```
 
-The AI will analyze the canary at 20% and 50% traffic, then automatically promote to 100% if healthy.
+The AI analyzes the canary at 10% and 60% traffic, then promotes to 100% if healthy. Both measurements report a passed quality check in the dashboard.
 
-### Scenario 2: Failed Deployment with Rollback
+### Scenario 2: Code Bug with Rollback and PR
 
-Deploy a buggy version and watch the AI detect and rollback:
+Deploy the NullPointerException image and watch the AI detect and roll back:
 
 ```bash
-# Deploy buggy version with NullPointerException
-kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer -n quarkus-demo
-
-# Watch the rollback
+# In progressive-delivery: set the rollout image to v2.nullpointer, commit, push
 kubectl argo rollouts get rollout quarkus-demo -n quarkus-demo --watch
 ```
 
-The AI will detect elevated error rates and automatically rollback the deployment. A GitHub PR will be created with the fix.
+The logs show `NullPointerException` in the canary only. The analysis rolls back, then delegates to the remediation agent, which reproduces the bug, patches `UserResource`, runs the tests, and opens a pull request with the verification evidence.
 
-### Scenario 3: Metrics-Only Regression
+### Scenario 3: Memory Leak with Rollback and Issue
+
+Deploy the memory leak image. The canary allocates 1MB per request with no release, so heap and latency climb while the logs only carry vague warnings.
+
+```bash
+# In progressive-delivery: set the rollout image to v3.memoryleak, commit, push
+kubectl argo rollouts get rollout quarkus-demo -n quarkus-demo --watch
+```
+
+This is an operational problem, not a patchable code defect, so the remediation agent opens an issue with the evidence and investigation steps instead of a pull request.
+
+### Scenario 4: Metrics-Only Regression
 
 Deploy a version that looks healthy at first and degrades slowly, showing why recurring analysis matters:
 
 ```bash
-# Deploy latency drift (slow burn regression, no errors in logs)
-kubectl set image rollout/quarkus-demo quarkus-demo=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v4.latency -n quarkus-demo
-
-# Watch the analysis
+# In progressive-delivery: set the rollout image to v4.latency, commit, push
 kubectl argo rollouts get rollout quarkus-demo -n quarkus-demo --watch
 ```
 
@@ -337,7 +356,7 @@ Check the logs for errors:
 ./mvnw quarkus:dev
 
 # Kubernetes
-kubectl logs -n demo-app -l app=demo-app
+kubectl logs -n quarkus-demo -l app=quarkus-demo
 ```
 
 Common issues:
@@ -400,18 +419,3 @@ For questions or issues:
 - Review the [Demo Script](DEMO_SCRIPT.md) for usage examples
 - Open an issue in the GitHub repository
 - Consult the related project documentation
-
----
-
-## Deployment flow
-
-Merging to `main` builds all scenario images and additionally tags the stable
-build with an immutable `stable-<commit sha>` tag. CI then opens a PR in the
-[progressive-delivery](https://github.com/kdubois/progressive-delivery) repo
-pointing the demo rollout at that build — merge the PR and Argo CD rolls it
-out through the canary analysis. Scenario switching (`v2.nullpointer`,
-`v3.memoryleak`, …) stays a one-line manifest edit.
-
-The manifest PR needs the `PROGRESSIVE_DELIVERY_TOKEN` repo secret: a token
-with contents read/write and pull-request write access to
-`kdubois/progressive-delivery`.

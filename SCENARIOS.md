@@ -830,6 +830,6 @@ The container-based approach provides:
 ✅ **GitOps-Ready**: Kustomize overlays enable easy scenario switching  
 ✅ **Smart Remediation**: AI creates PRs for fixable bugs, Issues for complex problems  
 
-**Next Steps**: Try the [Demo Flow](#demo-flow) to see all three scenarios in action!
+**Next Steps**: Try the [Demo Flow](#demo-flow) to see all four scenarios in action!
 
 ---

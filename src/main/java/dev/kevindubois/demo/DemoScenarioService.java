@@ -39,13 +39,13 @@ public class DemoScenarioService {
     private List<byte[]> memoryLeakList;
     private long memoryLeakStartTime;
 
-    // Latency drift simulation
-    private long latencyDriftStartTime;
-
     // Latency drift parameters:
     // - No added delay during the grace period, so an analysis early in the rollout sees baseline latency
     // - After the grace period the delay grows linearly with uptime
     // - The delay is capped so the load generator keeps producing traffic (slow responses, no timeouts)
+    // The drift delay is no longer injected into request processing: the artificial latency
+    // regression was the root cause of a canary rollback. The curve below is kept only for
+    // the trajectory unit tests.
     static final long LATENCY_DRIFT_GRACE_SECONDS = 20;
     static final long LATENCY_DRIFT_GROWTH_MS_PER_SECOND = 5;
     static final long LATENCY_DRIFT_MAX_DELAY_MS = 250;
@@ -70,11 +70,6 @@ public class DemoScenarioService {
             connectionPool = new Semaphore(MAX_CONNECTIONS);
         }
 
-        // Initialize latency drift timer if enabled
-        if (latencyDriftEnabled) {
-            latencyDriftStartTime = System.currentTimeMillis();
-        }
-
         LOG.info("DemoScenarioService initialized with mode: " + scenarioMode);
     }
 
@@ -95,12 +90,11 @@ public class DemoScenarioService {
             long memoryLeakLatency = executeMemoryLeakScenario(currentRequest);
             executeConnectionLeakScenario();
             executeCpuSpikeScenario(currentRequest);
-            long latencyDriftDelay = executeLatencyDriftScenario();
 
             // Then execute the configured scenario mode
             ScenarioResult result = executeScenarioMode();
             isSuccess = result.isSuccess();
-            latencyMs = result.getLatencyMs() + memoryLeakLatency + latencyDriftDelay;
+            latencyMs = result.getLatencyMs() + memoryLeakLatency;
 
         } catch (Exception e) {
             isSuccess = false;
@@ -289,42 +283,12 @@ public class DemoScenarioService {
     }
 
     /**
-     * BUG SCENARIO 4: Latency Drift (metrics-only regression)
-     * Adds an artificial per-request delay that grows with pod uptime:
-     * no delay for the first {@link #LATENCY_DRIFT_GRACE_SECONDS} seconds, then a linear
-     * ramp of {@link #LATENCY_DRIFT_GROWTH_MS_PER_SECOND} ms per second, capped at
-     * {@link #LATENCY_DRIFT_MAX_DELAY_MS} ms.
-     *
-     * Key characteristics for the v4.latency scenario:
-     * - An analysis early in the rollout sees baseline latency and passes
-     * - After 30-60 seconds of load the p95 latency clearly exceeds 1.5x the stable baseline
-     * - No errors, no exceptions, no log output - the regression is only visible in metrics
-     * - The cap keeps responses slow but successful, so the load generator keeps running
-     *
-     * @return Additional latency in milliseconds caused by the drift
-     */
-    private long executeLatencyDriftScenario() {
-        if (!latencyDriftEnabled) {
-            return 0;
-        }
-
-        long elapsedSeconds = (System.currentTimeMillis() - latencyDriftStartTime) / 1000;
-        long delayMs = computeLatencyDriftDelayMs(elapsedSeconds);
-
-        // Simulate the latency. No logging on purpose: this scenario must stay
-        // invisible in logs so only metric analysis can catch it.
-        try {
-            Thread.sleep(delayMs);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        return delayMs;
-    }
-
-    /**
      * Computes the latency drift delay for a given uptime.
      * Linear ramp after the grace period, capped at the maximum delay.
+     *
+     * No longer used for request processing: injecting this delay was the root cause
+     * of a canary rollback (p95/p99 far above the stable baseline). Kept for the
+     * trajectory unit tests.
      */
     static long computeLatencyDriftDelayMs(long elapsedSeconds) {
         if (elapsedSeconds <= LATENCY_DRIFT_GRACE_SECONDS) {

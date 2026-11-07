@@ -1,19 +1,21 @@
-# Agent Instructions — argo-rollouts-quarkus-demo
+# Agent Instructions — argo-rollouts-aiops-dashboard
 
-Quarkus demo application with built-in load generator and bug scenario images. Used to test the AI-powered progressive delivery system end-to-end. This is an experimental project — prioritize simplicity over backwards compatibility.
+Quarkus demo dashboard and canary target for the AI-powered progressive delivery system. It serves the rollout UI, exposes health and Prometheus endpoints, and ships four scenario images used to test the agent end to end. This is an experimental project — prioritize simplicity over backwards compatibility.
 
 ## Overview
 
-This app serves as the canary deployment target for testing the `rollouts-plugin-metric-ai` and `kubernetes-agent` integration. It includes multiple container image tags representing different scenarios:
+The app is the canary deployment target for `rollouts-plugin-metric-ai` and `kubernetes-agent`. The GitHub Actions workflow builds four images from the same source:
 
-- **Stable** — healthy baseline
-- **Null pointer** — throws NullPointerException under load
-- **Memory leak** — gradual memory consumption leading to OOM
-- **Latency drift** — progressive response latency increase, no errors in logs
+- `v1.stable` — healthy baseline
+- `v2.nullpointer` — `NullPointerException` on 20% of user lookups
+- `v3.memoryleak` — 1MB allocated per request, latency climbs with heap
+- `v4.latency` — latency drift after a 20-second grace period, clean logs
+
+The flags are compiled into each image. They are not runtime configuration.
 
 ## Stack
 
-Java 25, Quarkus 3.x with REST endpoints and health checks.
+Java 25, Quarkus 3.x with REST endpoints, a Qute dashboard, and a built-in load generator.
 
 ## Development
 
@@ -25,21 +27,23 @@ Dev UI: `http://localhost:8080/q/dev/`
 
 ## Building and Deploying
 
-Use the Quarkus build and image push workflow:
+Scenario images are built and pushed by [`.github/workflows/build-scenario-images.yml`](.github/workflows/build-scenario-images.yml) on every push to `main`. Do not build them by hand unless you are debugging the workflow.
+
+The running image is a line in `progressive-delivery/workloads/quarkus-rollouts-demo/base/rollout.yaml`. Change it, commit, and push; Argo CD syncs it. The rolling update is the demo, so there is nothing to restart manually.
+
+For a quick local iteration on the dashboard, push a `:main` image and point the rollout at it:
 
 ```bash
 quarkus build --no-tests && quarkus image push --also-build
 ```
 
-Then force a pod restart to pull the updated image:
+## Load generation
 
-```bash
-oc argo rollouts restart quarkus-demo -n quarkus-demo
-```
+Each pod generates 300 requests per second against itself: 80% to `/api/status`, 20% to `/api/user`. Configuration lives under `load.generator.*` in `application.properties`. This is what gives the agent enough samples during the first canary pause.
 
-## Load Generation
+## Dashboard
 
-The app includes an internal load generator that can be triggered via REST endpoint or configuration. See the source code for details.
+The dashboard calls the agent for rollout control (`POST /api/rollout/promote` and `/abort`) through `KUBERNETES_AGENT_URL`. It renders the decision card, the decision-model grader verdict, pause-gate buttons, and the activity feed. Keep the UI aligned with the agent response contract rather than duplicating logic here.
 
 ## Testing
 

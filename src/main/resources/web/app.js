@@ -723,7 +723,7 @@ function formatEventType(type) {
 // === DECISION MODEL (GRADER) ===
 
 // QUALITY_CHECK events carry "Quality check: 83/100 — the evidence backs the
-// conclusion" as the message and "decision model (Jev) graded the analysis
+// conclusion" as the message and "decision model graded the analysis
 // conclusion against the diagnostic data; analysis self-confidence 75/100" as details
 function parseGraderEvent(event) {
     const titleMatch = event.message.match(/Quality check:\s*(\d+)\/100(?:\s*\u2014\s*(.+))?/);

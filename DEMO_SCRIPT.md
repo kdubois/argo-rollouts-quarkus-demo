@@ -1,891 +1,194 @@
-# Argo Rollouts AI Plugin - Conference Demo Script
+# Conference demo script
 
-**Conference Presentation Guide**: AI-Powered Progressive Delivery with Argo Rollouts
+A run-through of the four scenarios in about eight minutes, with talking points and the commands that show each step.
 
-## Table of Contents
+## Before the demo
 
-- [Introduction](#introduction)
-- [Demo Setup](#demo-setup)
-- [Happy Path Demo](#happy-path-demo)
-- [Failure Scenario Demo](#failure-scenario-demo)
-- [Latency Drift Demo](#latency-drift-demo)
-- [Uncertainty Pause Demo](#uncertainty-pause-demo)
-- [Q&A Talking Points](#qa-talking-points)
-- [Reset Instructions](#reset-instructions)
-- [Troubleshooting](#troubleshooting)
-
----
-
-## Introduction
-
-**Duration**: 3-5 minutes
-
-### Opening Hook
-
-"How many of you have experienced a production incident caused by a bad deployment? Now, what if I told you that AI could analyze your canary deployments in real-time, identify issues before they impact users, and even create pull requests to fix the problems automatically?"
-
-### Key Message
-
-Progressive delivery is critical for safe deployments, but analyzing metrics and logs manually is time-consuming and error-prone. The Argo Rollouts AI Plugin brings autonomous AI agents into your deployment pipeline to analyze canary deployments using real Kubernetes logs and metrics, identify issues before they reach production, make decisions to promote or rollback automatically, and create pull requests with fixes when problems are detected.
-
-### Architecture Overview
-
-```
-┌─────────────────┐
-│   Demo App      │ ← Quarkus application with metrics
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Argo Rollouts   │ ← Progressive delivery controller
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  AI Plugin      │ ← Metric provider plugin
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Kubernetes      │ ← Autonomous AI agent
-│    Agent        │   (Gemini/OpenAI powered)
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│    GitHub       │ ← Automated PR creation
-└─────────────────┘
-```
-
-**Talking Points**:
-
-The system requires no manual intervention as the AI makes deployment decisions autonomously. It analyzes real Kubernetes data including logs, events, and metrics. When issues are detected, the system performs autonomous remediation by creating pull requests automatically. This is production-ready technology built on Argo Rollouts, a CNCF graduated project. The entire solution is open source and available today.
-
----
-
-## Demo Setup
-
-### Pre-Demo Checklist
-
-Before starting the demo, verify that your Kubernetes cluster is running and accessible. Ensure that Argo Rollouts is installed and healthy. Confirm that the AI Plugin is configured in the argo-rollouts ConfigMap. Check that the Kubernetes Agent is deployed and responding to health checks. Verify that the demo app is deployed in the `demo-app` namespace. Confirm that Istio service mesh is configured correctly. Ensure your GitHub token is configured for PR creation.
-
-Prepare your terminal windows as follows:
-- **Window 1**: Watch rollout status continuously
-- **Window 2**: Watch pod status with updates every 2 seconds
-- **Window 3**: Execute demo commands
-- **Window 4**: View logs (optional, for deep dive)
-
-### Quick Verification
+Check the stack is healthy:
 
 ```bash
-# Verify cluster access
-kubectl cluster-info
+# Argo CD, Argo Rollouts, and the plugin
+oc get pods -n openshift-gitops | grep -E "argo-rollouts|kubernetes-agent"
 
-# Check Argo Rollouts
-kubectl get pods -n argo-rollouts
+# Demo namespace and rollout
+oc get rollout quarkus-demo -n quarkus-demo
+oc get pods -n quarkus-demo
 
-# Check Kubernetes Agent
-kubectl get pods -n argo-rollouts | grep kubernetes-agent
-
-# Check demo app
-kubectl get rollout -n demo-app
-kubectl get pods -n demo-app
+# Dashboard
+oc get route quarkus-demo -n quarkus-demo
 ```
 
-### Terminal Setup
+Open the dashboard in a browser and keep it visible. It shows the rollout, the live traffic split, the decision card with the quality check, and the agent activity feed.
 
-**Terminal 1 - Rollout Status** (keep visible):
-```bash
-kubectl argo rollouts get rollout demo-app -n demo-app --watch
-```
-
-**Terminal 2 - Pod Status** (keep visible):
-```bash
-watch -n 2 'kubectl get pods -n demo-app -o wide'
-```
-
-**Terminal 3 - Commands** (for executing demo steps)
-
-**Terminal 4 - Logs** (optional, for deep dive):
-```bash
-kubectl logs -f -n argo-rollouts deployment/kubernetes-agent
-```
-
----
-
-## Happy Path Demo
-
-**Duration**: 8-10 minutes
-
-### Scenario Overview
-
-"Let's start with a successful deployment. We'll deploy a new version of our application and watch as the AI analyzes the canary deployment in real-time."
-
-### Step 1: Show Current State
-
-**Talking Points**:
-
-"Here's our application running in production with 3 replicas. All pods are healthy and serving traffic to users."
+Set up two terminals:
 
 ```bash
-# Show current deployment
-kubectl get rollout demo-app -n demo-app
+# Terminal 1 — rollout status
+oc argo rollouts get rollout quarkus-demo -n quarkus-demo --watch
 
-# Show current pods
-kubectl get pods -n demo-app -l app=demo-app
-
-# Access the application
-kubectl port-forward -n demo-app svc/demo-app-stable 8080:8080
-# Open browser: http://localhost:8080
+# Terminal 2 — agent logs
+oc logs -f deployment/kubernetes-agent -n openshift-gitops
 ```
 
-**Expected Output**:
-```
-NAME       DESIRED   CURRENT   UP-TO-DATE   AVAILABLE
-demo-app   3         3         3            3
+Trigger each scenario from the `progressive-delivery` repository. Edit the image line in `workloads/quarkus-rollouts-demo/base/rollout.yaml`, commit, and push. Argo CD syncs the change in a few seconds; do not run `kubectl set image`, because the sync reverts it.
 
-NAME                           READY   STATUS    RESTARTS   AGE
-demo-app-7d8f9c5b6d-abc12     2/2     Running   0          5m
-demo-app-7d8f9c5b6d-def34     2/2     Running   0          5m
-demo-app-7d8f9c5b6d-ghi56     2/2     Running   0          5m
-```
+## Opening
 
-### Step 2: Trigger Canary Deployment
+"How many of you have had a bad deployment reach production? Canary deployments give you a smaller blast radius, but someone still has to watch the graphs and decide whether to continue. In this demo an AI agent does that: it reads the canary's logs and metrics, decides promote or roll back, and when it rolls back it opens a fix."
 
-**Talking Points**:
+The stack is Argo CD for GitOps, Argo Rollouts for the canary, a Go metric plugin, and a Quarkus agent that owns the LLM and the Kubernetes tools. The plugin sends selectors to the agent and returns the agent's decision to Argo Rollouts. There is no model inside the plugin.
 
-"Now let's deploy version 2.0.0 with a new feature. Argo Rollouts will automatically create a canary deployment. The AI plugin will analyze the canary at each step of the rollout process."
+## Scenario 1: a healthy rollout
+
+**Duration**: about 2 minutes, after CI has built the images.
+
+Every push to the demo repository makes CI build a fresh stable image and open a `Deploy demo build <sha>` PR in
+`progressive-delivery`. Merge that PR (or change the image line by hand) and push; Argo CD syncs the manifest in a few
+seconds and the canary starts.
 
 ```bash
-# Update the image to trigger a new rollout
-kubectl argo rollouts set image demo-app -n demo-app \
-  demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable
-
-# Or use kubectl set image directly
-kubectl set image rollout/demo-app demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable -n demo-app
+# In progressive-delivery
+gh pr list --search "Deploy demo build" --state open
+gh pr merge <number> --squash
 ```
 
-**Expected Output**:
-```
-rollout "demo-app" image updated
-```
+Talking points while the rollout advances:
 
-### Step 3: Watch Canary Progression
+- The canary takes 10% of traffic first. The app generates its own load, 300 requests per second per pod, so there is data immediately.
+- The first analysis runs during the initial pause. A second one runs at 60% weight. Both have to pass before the rollout reaches 100%.
+- The agent fetches logs and metrics for stable and canary, compares them, and returns a decision with a confidence score.
 
-**Talking Points**:
-
-"Notice the rollout strategy progresses through three stages: 20%, 50%, and finally 100% traffic. At each step, the AI analyzes logs and metrics from both the stable and canary versions. The analysis runs every 30 seconds for 3 iterations to ensure we have enough data to make an informed decision."
-
-**Watch Terminal 1** - You should see:
-```
-Name:            demo-app
-Namespace:       demo-app
-Status:          ॥ Paused
-Strategy:        Canary
-  Step:          1/6
-  SetWeight:     20
-  ActualWeight:  20
-Images:          ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (canary)
-                 ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (stable)
-Replicas:
-  Desired:       3
-  Current:       4
-  Updated:       1
-  Ready:         4
-  Available:     4
-
-NAME                                    KIND         STATUS        AGE  INFO
-⟳ demo-app                              Rollout      ॥ Paused      10m  
-├──# revision:2                                                         
-│  ├──⧉ demo-app-789abc123              ReplicaSet   ✔ Healthy     30s  canary
-│  │  └──□ demo-app-789abc123-xyz12    Pod          ✔ Running     30s  ready:2/2
-│  └──α demo-app-789abc123-2           AnalysisRun  ◌ Running     20s  ✔ 1,◌ 1
-└──# revision:1                                                         
-   └──⧉ demo-app-7d8f9c5b6d             ReplicaSet   ✔ Healthy     10m  stable
-      ├──□ demo-app-7d8f9c5b6d-abc12   Pod          ✔ Running     10m  ready:2/2
-      ├──□ demo-app-7d8f9c5b6d-def34   Pod          ✔ Running     10m  ready:2/2
-      └──□ demo-app-7d8f9c5b6d-ghi56   Pod          ✔ Running     10m  ready:2/2
-```
-
-### Step 4: Show AI Analysis
-
-**Talking Points**:
-
-"Let's look at what the AI is analyzing behind the scenes. It's collecting logs from both stable and canary pods. The Kubernetes Agent uses its built-in tools to gather metrics and events from the cluster. It then uses a large language model to analyze this data and make an informed decision about whether to proceed with the deployment."
+What to show:
 
 ```bash
-# View the AnalysisRun
-kubectl get analysisrun -n demo-app
-
-# Get detailed analysis results
-kubectl describe analysisrun -n demo-app $(kubectl get analysisrun -n demo-app -o name | tail -1)
-
-# View AI plugin logs
-kubectl logs -n argo-rollouts deployment/argo-rollouts | grep -A 10 "AI metric"
-
-# View Kubernetes Agent logs
-kubectl logs -n argo-rollouts deployment/kubernetes-agent | tail -50
+oc argo rollouts get rollout quarkus-demo -n quarkus-demo
+oc get analysisrun -n quarkus-demo
+oc describe analysisrun -n quarkus-demo <name>
 ```
 
-**Expected Output** (AnalysisRun):
-```
-Name:         demo-app-789abc123-2
-Namespace:    demo-app
-Status:       Running
-Phase:        Running
+On the dashboard, point at the decision card: the model's confidence, the grader's quality check, and the activity feed. Both measurements should show a passed quality check.
 
-Metrics:
-  Name:              ai-deployment-analysis
-  Successful:        1
-  Inconclusive:      1
-  Failed:            0
-  
-  Measurements:
-    Phase:           Successful
-    Message:         Canary deployment is healthy
-                     - Success rate: 99.8%
-                     - Error rate: 0.2%
-                     - P95 latency: 145ms
-                     - No critical issues detected
-                     Decision: PROCEED
-```
+## Scenario 2: a code bug, a rollback, and a pull request
 
-### Step 5: Successful Promotion
+**Duration**: about 2 minutes.
 
-**Talking Points**:
-
-"The AI has analyzed the canary at both 20% and 50% traffic levels. All metrics are healthy with no issues detected. Based on this analysis, Argo Rollouts automatically promotes the canary to 100% traffic. The old version is scaled down and the new version becomes the stable release."
-
-**Watch Terminal 1** - Final state:
-```
-Name:            demo-app
-Namespace:       demo-app
-Status:          ✔ Healthy
-Strategy:        Canary
-Images:          ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (stable)
-Replicas:
-  Desired:       3
-  Current:       3
-  Updated:       3
-  Ready:         3
-  Available:     3
-
-NAME                                    KIND         STATUS        AGE  INFO
-⟳ demo-app                              Rollout      ✔ Healthy     12m  
-├──# revision:2                                                         
-│  ├──⧉ demo-app-789abc123              ReplicaSet   ✔ Healthy     2m   stable
-│  │  ├──□ demo-app-789abc123-xyz12    Pod          ✔ Running     2m   ready:2/2
-│  │  ├──□ demo-app-789abc123-abc34    Pod          ✔ Running     1m   ready:2/2
-│  │  └──□ demo-app-789abc123-def56    Pod          ✔ Running     1m   ready:2/2
-│  └──α demo-app-789abc123-2           AnalysisRun  ✔ Successful  2m   ✔ 3
-└──# revision:1                                                         
-   └──⧉ demo-app-7d8f9c5b6d             ReplicaSet   • ScaledDown  12m  
-```
-
-**Key Takeaway**:
-
-"In just 2 minutes, we deployed a new version with AI-powered analysis at each step. There was no manual intervention and no guesswork. This is autonomous, intelligent progressive delivery in action."
-
----
-
-## Failure Scenario Demo
-
-**Duration**: 10-12 minutes
-
-### Scenario Overview
-
-"Now let's see what happens when something goes wrong. We'll deploy a version with a bug and watch the AI detect the issue and automatically rollback the deployment."
-
-### Step 1: Deploy Buggy Version
-
-**Talking Points**:
-
-"This version has a bug that causes increased error rates. The AI will detect this during canary analysis. It will automatically rollback the deployment and create a GitHub pull request with the fix."
+Set the image to `v2.nullpointer` and push.
 
 ```bash
-# Deploy buggy version with NullPointerException
-kubectl set image rollout/demo-app demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer -n demo-app
-
-# Or use kubectl argo rollouts
-kubectl argo rollouts set image demo-app -n demo-app \
-  demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer
+# In progressive-delivery: image: ...:v2.nullpointer
+git add . && git commit -m "demo: null pointer bug" && git push
 ```
 
-### Step 2: Watch Canary Fail
-
-**Talking Points**:
-
-"The canary is deployed at 20% traffic. The AI starts analyzing logs and metrics immediately. Notice the error rate increasing in the canary pods compared to the stable version."
-
-**Watch Terminal 1**:
-```
-Name:            demo-app
-Namespace:       demo-app
-Status:          ॥ Paused
-Strategy:        Canary
-  Step:          1/6
-  SetWeight:     20
-  ActualWeight:  20
-Images:          ghcr.io/kdubois/argo-rollouts-quarkus-demo:v2.nullpointer (canary)
-                 ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (stable)
-
-NAME                                    KIND         STATUS        AGE  INFO
-⟳ demo-app                              Rollout      ॥ Paused      15m  
-├──# revision:3                                                         
-│  ├──⧉ demo-app-456def789              ReplicaSet   ✔ Healthy     45s  canary
-│  │  └──□ demo-app-456def789-abc12    Pod          ✔ Running     45s  ready:2/2
-│  └──α demo-app-456def789-3           AnalysisRun  ◌ Running     35s  ◌ 1
-└──# revision:2                                                         
-   └──⧉ demo-app-789abc123              ReplicaSet   ✔ Healthy     5m   stable
-```
-
-### Step 3: Show AI Detection
-
-**Talking Points**:
-
-"The AI has detected elevated error rates in the canary deployment. It's analyzing the logs to identify the root cause of the problem. Based on this analysis, the AI makes a decision to rollback the deployment."
+The canary throws `NullPointerException` in `UserResource` on 20% of user lookups. Stable does not.
 
 ```bash
-# View the failing AnalysisRun
-kubectl describe analysisrun -n demo-app $(kubectl get analysisrun -n demo-app -o name | tail -1)
-
-# View canary pod logs (showing errors)
-kubectl logs -n demo-app -l role=canary --tail=50
+oc logs -n quarkus-demo -l role=canary --tail=30
+oc argo rollouts get rollout quarkus-demo -n quarkus-demo --watch
 ```
 
-**Expected Output** (AnalysisRun):
-```
-Name:         demo-app-456def789-3
-Namespace:    demo-app
-Status:       Failed
-Phase:        Failed
+Talking points:
 
-Metrics:
-  Name:              ai-deployment-analysis
-  Successful:        0
-  Inconclusive:      1
-  Failed:            1
-  
-  Measurements:
-    Phase:           Failed
-    Message:         Canary deployment has critical issues
-                     
-                     Root Cause Analysis:
-                     The error rate is 15.3%, which exceeds the threshold of 5%.
-                     The success rate is 84.7%, which is below the threshold of 95%.
-                     A pattern of NullPointerException was detected in the request handler.
-                     This is causing 15% of requests to fail with 500 errors.
-                     
-                     Recommendation: ROLLBACK
-                     
-                     GitHub PR created: https://github.com/owner/repo/pull/456
-                     
-                     Suggested Fix:
-                     Add null check in UserService.getUser() method.
-                     Add defensive programming for edge cases.
-                     Increase test coverage for error scenarios.
-```
+- The agent sees the exception on the canary only. A repeated canary-only exception is evidence even at a low rate.
+- It rolls back instead of promoting, then delegates to the remediation agent over A2A.
+- The remediation agent runs in a sandbox, reproduces the failure, patches the null check, runs the test suite, and opens a pull request. The PR carries the verification output.
 
-### Step 4: Automatic Rollback
+Show the AnalysisRun message and the pull request in the browser. Close the PR after the demo; the next run needs the bug still present.
 
-**Talking Points**:
+## Scenario 3: an operational problem, an issue instead of a patch
 
-"Argo Rollouts automatically aborts the deployment based on the AI's decision. Traffic is shifted back to the stable version. Notice that only 20% of traffic saw the bug, so user impact was minimal."
+**Duration**: about 2 minutes.
 
-**Watch Terminal 1**:
-```
-Name:            demo-app
-Namespace:       demo-app
-Status:          ✖ Degraded
-Message:         RolloutAborted: Metric "ai-deployment-analysis" assessed Failed
-Strategy:        Canary
-Images:          ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (stable)
-Replicas:
-  Desired:       3
-  Current:       3
-  Updated:       0
-  Ready:         3
-  Available:     3
-
-NAME                                    KIND         STATUS        AGE  INFO
-⟳ demo-app                              Rollout      ✖ Degraded    16m  
-├──# revision:3                                                         
-│  ├──⧉ demo-app-456def789              ReplicaSet   • ScaledDown  2m   canary
-│  └──α demo-app-456def789-3           AnalysisRun  ✖ Failed      2m   ✖ 1
-└──# revision:2                                                         
-   └──⧉ demo-app-789abc123              ReplicaSet   ✔ Healthy     6m   stable
-      ├──□ demo-app-789abc123-xyz12    Pod          ✔ Running     6m   ready:2/2
-      ├──□ demo-app-789abc123-abc34    Pod          ✔ Running     5m   ready:2/2
-      └──□ demo-app-789abc123-def56    Pod          ✔ Running     5m   ready:2/2
-```
-
-### Step 5: Show GitHub PR
-
-**Talking Points**:
-
-"The Kubernetes Agent created a pull request with the fix. It includes a detailed root cause analysis and the proposed code changes. Developers can review and merge the fix, then trigger a new deployment."
+Set the image to `v3.memoryleak` and push. The canary allocates 1MB per request and never releases it.
 
 ```bash
-# View agent logs showing PR creation
-kubectl logs -n argo-rollouts deployment/kubernetes-agent | grep -A 20 "Creating GitHub PR"
+oc logs -n quarkus-demo -l role=canary --tail=10 -f
 ```
 
-**Show in Browser**:
+Talking points:
 
-Open the GitHub PR link from the AnalysisRun. Show the PR description which includes the root cause analysis, proposed code fix, testing recommendations, and links to the relevant Kubernetes resources.
+- The logs are vague: response times increasing, heap at 50MB, then 100MB. No stack trace.
+- Latency climbs as the heap fills, so the metrics carry the signal.
+- The agent rolls back. Because this is not a patchable code defect, the remediation agent opens an issue with the evidence and the investigation steps. It does not invent a patch.
 
-**Key Takeaway**:
+This is the case that shows the split: the decision is always promote or roll back, but the remediation path depends on the kind of failure.
 
-"The AI detected the issue in under 2 minutes, automatically rolled back the deployment, and created a pull request with the fix. This is autonomous progressive delivery in action."
+## Scenario 4: a metrics-only regression
 
----
+**Duration**: about 2 minutes.
 
-## Latency Drift Demo
+Set the image to `v4.latency` and push.
 
-**Duration**: 5-7 minutes
+Talking points:
 
-### Scenario Overview
-
-"Now let's see a slower kind of failure. This version has no bugs in the code you can find in the logs - no exceptions, no errors, 99% success rate. But its response time drifts upward the longer it runs. The first analysis will pass, because the canary looks identical to the stable version. Only a later analysis catches it. This is why analysis has to repeat during a rollout."
-
-### Step 1: Deploy the Latency Drift Version
-
-**Talking Points**:
-
-"This version adds no delay for its first 20 seconds, then adds 5 milliseconds per second of uptime to every request, capped at 250 milliseconds. Early in the rollout it looks perfectly healthy."
+- The canary has no errors. Success rate stays at 99%, the logs stay clean.
+- For the first 20 seconds of pod uptime it adds no delay, so the first analysis sees baseline latency and passes.
+- After that, latency grows 5ms per second, capped at 250ms. By the second measurement the canary p95 is well above stable, and the rollout aborts on metrics alone.
 
 ```bash
-# Deploy latency drift version
-kubectl set image rollout/demo-app demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v4.latency -n demo-app
+oc get analysisrun -n quarkus-demo -w
+oc argo rollouts get rollout quarkus-demo -n quarkus-demo
 ```
 
-### Step 2: Show the Clean Canary
+The point: one analysis early in a rollout can be fooled. Recurring analysis is what catches a slow burn.
 
-**Talking Points**:
+## The pause gate
 
-"Look at the canary logs. No errors, no exceptions, no warnings. If we only analyzed logs, we would call this deployment healthy - and early in the rollout, it is."
+The AnalysisTemplate sets `pauseOnUncertainty: true` with a threshold of 50. When the analysis promotes but the evidence is weak, the agent patches the rollout to paused instead of letting it through. The dashboard shows a pulsing traffic bar with Promote and Abort buttons; both call the agent, which drives the Argo Rollouts API.
+
+If the grader contradicts a promote decision, the rollout is paused and the quality check is marked failed. The analysis then escalates to the second opinion model and re-runs, and the activity feed names both models and both decisions.
+
+The gate is a demo of the human-in-the-loop path: the measurement stays successful, the pause holds the rollout, and a person decides.
+
+## Q&A talking points
+
+**Does the plugin call the model?** No. The plugin is a thin Go provider that sends pod selectors and context to the agent over HTTP. The agent owns the LLM, the Kubernetes tools, and the prompt.
+
+**Which models work?** Any OpenAI-compatible endpoint: OpenAI, Gemini's compatible endpoint, vLLM, LiteLLM, or an internal gateway. The deployment switches models through a ConfigMap and a restart, no code change.
+
+**How does it avoid false rollbacks on a small sample?** The metrics are collected over a window and the window extends until the canary has at least 500 requests. The grader also judges the canary against that floor rather than against stable's lifetime total.
+
+**What stops a hallucinated analysis?** The decision-model grader asks whether the evidence contradicts the conclusion and whether there is enough data to verify it. A contradicted conclusion escalates to the second opinion model; a promote that survives the comparison with weak evidence pauses for a human.
+
+**Does it fix production?** It opens a pull request or an issue. The agent does not merge, and the sandbox is read-only outside its workspace.
+
+**What did it cost to run?** The analysis and escalation tiers are small open-weight models behind an OpenAI-compatible gateway. The heavy lifting is the tool calls around the model, not the token count.
+
+## Reset after the demo
+
+Set the rollout back to stable and push:
 
 ```bash
-# Show canary logs - completely clean
-kubectl logs -n demo-app -l role=canary --tail=30
+# In progressive-delivery
+# image: ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable
+git add . && git commit -m "demo: back to stable" && git push
+oc argo rollouts get rollout quarkus-demo -n quarkus-demo --watch
 ```
 
-**Expected Output**: Normal request logs, no errors.
-
-### Step 3: First Analysis Passes
-
-**Talking Points**:
-
-"The first analysis runs seconds into the rollout, while the canary is still in its grace period. The p95 latency matches the stable version, so the AI correctly lets the rollout continue."
+Close any pull requests and issues the remediation agent opened. They are real artifacts against the demo repository and will fail the next run if left open.
 
 ```bash
-# Show the first analysis result
-kubectl describe analysisrun -n demo-app $(kubectl get analysisrun -n demo-app -o name | tail -1)
+gh pr list --repo kdubois/argo-rollouts-aiops-dashboard
+gh issue list --repo kdubois/argo-rollouts-aiops-dashboard
 ```
 
-**Expected Output** (AnalysisRun):
-```
-Measurements:
-  Phase:           Successful
-  Message:         Canary deployment is healthy
-                   - Success rate: 99.9%
-                   - P95 latency: 48ms (canary) vs 50ms (stable)
-                   - No critical issues detected
-                   Decision: PROCEED
-```
+## If something goes wrong
 
-### Step 4: Later Analysis Fails
-
-**Talking Points**:
-
-"But the delay keeps growing. Thirty to sixty seconds in, the canary p95 is two to five times the stable baseline. The success rate is still 99% - the responses are slow, not failing. The next analysis compares the latency metrics and fails the rollout."
+**The rollout did not start**: confirm the image line changed and Argo CD synced.
 
 ```bash
-# Watch the later analysis iterations
-kubectl get analysisrun -n demo-app -w
-
-# Compare latency yourself
-kubectl exec -n demo-app $(kubectl get pods -n demo-app -l role=canary -o name | head -1) -- \
-  curl -s localhost:8080/q/metrics | grep http_request_duration_seconds
+oc get rollout quarkus-demo -n quarkus-demo -o jsonpath='{.spec.template.spec.containers[0].image}'
+oc get application quarkus-rollouts-demo -n openshift-gitops -o jsonpath='{.status.sync.status}'
 ```
 
-**Expected Output** (AnalysisRun):
-```
-Measurements:
-  Phase:           Failed
-  Message:         Canary deployment has critical issues
-                   
-                   Root Cause Analysis:
-                   The canary p95 latency is 250ms, which is 5x the stable baseline (50ms).
-                   The success rate is 99.2% - no errors are present in the logs.
-                   Latency has increased steadily over the analysis window.
-                   
-                   Recommendation: ROLLBACK
-```
-
-### Step 5: Automatic Rollback
-
-**Watch Terminal 1**:
-```
-Name:            demo-app
-Status:          ✖ Degraded
-Message:         RolloutAborted: Metric "ai-deployment-analysis" assessed Failed
-Images:          ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (stable)
-```
-
-**Key Takeaway**:
-
-"A single analysis right after the canary starts would have promoted this version. The regression only shows up in the metrics over time, which is exactly the kind of bug that recurring analysis during a rollout is designed to catch."
-
----
-
-## Uncertainty Pause Demo
-
-**Duration**: 3-4 minutes
-
-### Scenario Overview
-
-"So far the agent made every call on its own: promote or rollback. But what happens when the evidence is thin and the agent simply is not confident? Instead of guessing, it can hold the rollout and hand the decision to a human. That is the uncertainty pause gate — opt-in, off by default, and scoped to a single namespace."
-
-### Step 1: Enable the Pause Gate
-
-**Talking Points**:
-
-"The gate is two settings in the AnalysisTemplate. I'm setting the threshold to 95 — higher than any of our scenarios score, so the very next analysis trips it. In a real deployment you would set it around 50 and only genuinely uncertain analyses would hold."
+**No AnalysisRun**: check the plugin registered and the agent is reachable.
 
 ```bash
-# The gate is on by default (threshold 50). For the demo, raise the
-# threshold to 99 — above what the healthy scenario scores — so the very
-# next analysis trips it:
-#   uncertaintyThreshold: 99
-git add . && git commit -m "demo: raise the uncertainty threshold" && git push
-
-# Wait for Argo CD to sync, then verify
-kubectl get analysistemplate ai-analysis-agent -n demo-app -o yaml | grep -A2 uncertainty
+oc logs deployment/argo-rollouts -n openshift-gitops | grep -i metric-ai
+oc logs deployment/kubernetes-agent -n openshift-gitops --tail=50
 ```
 
-### Step 2: Trigger a Rollout and Watch It Hold
+If the plugin is missing on a fresh cluster, delete the Argo Rollouts pod so the operator re-registers it.
 
-**Watch Terminal 1**:
-```bash
-kubectl set image rollout/demo-app demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable -n demo-app
-oc argo rollouts get rollout demo-app -n demo-app --watch
-```
+**The agent rolls back a healthy canary**: read the quality check in the activity feed. A failed grade with a canary-only exception is the intended path; a failed grade on a thin sample is a bug worth screenshotting.
 
-**Expected Output**:
-```
-Name:            demo-app
-Status:          ॥ Paused
-Message:         ManuallyPaused
-Images:          ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable (stable)
-```
-
-**Watch the Dashboard**: the rollout phase shows Paused and a purple PAUSE event appears in the activity feed: "Rollout paused for human review".
-
-**Talking Points**:
-
-"Notice what did not happen: the analysis did not fail. It promoted — the canary is healthy — but with confidence below the threshold. The measurement is successful and the pause is what holds the rollout. A rollback would have aborted; this just holds."
-
-### Step 3: Show Why It Paused
-
-```bash
-# The paused rollout name is recorded in the measurement metadata
-kubectl get analysisrun -n demo-app -o yaml | grep -B2 pausedRollout
-```
-
-**Expected Output**:
-```
-    pausedRollout: demo-app
-```
-
-### Step 4: The Human Decides
-
-```bash
-# Resume the rollout — you are overriding the analysis
-oc argo rollouts promote demo-app -n demo-app
-```
-
-**Talking Points**:
-
-"Unpausing is a decision: it says I reviewed this and I am overriding the analysis. And the gate is honest about that — if the next analysis is still below the threshold, it pauses again. Each measurement applies the policy. To turn it off, revert the template change and push."
-
-**Key Takeaway**:
-
-"Autonomous does not have to mean unsupervised. The system can run fully on its own, and an operator can insert themselves at the exact decision point where the AI is unsure — without touching the rollout flow itself."
-
----
-
-## Q&A Talking Points
-
-### Common Questions
-
-#### "How does the AI make decisions?"
-
-The Kubernetes Agent uses large language models like Gemini or OpenAI with structured outputs. It analyzes real logs, metrics, and events from Kubernetes. The system uses predefined thresholds and patterns from the AnalysisTemplate. Decisions are based on success rate, error rate, latency, and trends over time. The agent returns structured JSON with a decision (PROCEED, ROLLBACK, or PAUSE) along with detailed reasoning.
-
-#### "What if the AI makes a wrong decision?"
-
-The system is designed with safety in mind. Canary deployments limit the blast radius by gradually increasing traffic from 20% to 50% to 100%. Multiple analysis iterations run before promotion to ensure consistency. Human review of GitHub pull requests is required before merging fixes. Rollback is automatic and fast when issues are detected. All decisions are logged and auditable for post-incident analysis.
-
-#### "Can I customize the AI analysis?"
-
-Yes, the AnalysisTemplate is fully customizable. You can define your own metrics and thresholds. You can add custom Prometheus queries for your specific application. You can provide specific instructions to the AI about what to focus on. The `extraPrompt` parameter allows you to add additional context. You can configure the analysis frequency and iteration count to match your needs.
-
-#### "What about cost and latency?"
-
-The system uses efficient models like Gemini Flash or GPT-4o-mini. Each analysis costs approximately $0.01. Analysis only runs during deployments, not continuously. The latency for each analysis is 5-15 seconds. Analysis runs in parallel with traffic ramping, so it doesn't block deployment progression. The intervals are configurable with a default of 30 seconds.
-
-#### "Does it work with other service meshes?"
-
-The demo shows Istio, which is currently supported. Argo Rollouts also supports Linkerd, AWS App Mesh, Traefik, and NGINX. The AI plugin works with any traffic routing mechanism supported by Argo Rollouts. The plugin focuses on analyzing application metrics and logs, which are independent of the service mesh.
-
-#### "How do I get started?"
-
-First, install Argo Rollouts, which is a CNCF graduated project. Then deploy the AI plugin, which is open source. Next, deploy the Kubernetes Agent, also open source. Configure your AnalysisTemplate with your metrics and thresholds. Finally, start deploying with AI-powered analysis. See the DEPLOYMENT.md file for detailed step-by-step instructions.
-
----
-
-## Reset Instructions
-
-### Between Demos
-
-To reset the demo app to a clean state between presentations:
-
-```bash
-# Delete the rollout
-kubectl delete rollout demo-app -n demo-app
-
-# Wait for pods to terminate
-kubectl wait --for=delete pod -l app=demo-app -n demo-app --timeout=60s
-
-# Redeploy from the progressive-delivery repository: Argo CD's selfHeal
-# recreates the deleted rollout automatically, or force it with:
-argocd app sync quarkus-rollouts-demo
-
-# Wait for rollout to be healthy
-kubectl argo rollouts status demo-app -n demo-app --watch
-
-# Verify the state
-kubectl get rollout demo-app -n demo-app
-kubectl get pods -n demo-app
-```
-
-### Quick Reset (Keep Rollout)
-
-If you just want to reset to a known good state without recreating everything:
-
-```bash
-# Abort any in-progress rollout
-kubectl argo rollouts abort demo-app -n demo-app
-
-# Promote to stable
-kubectl argo rollouts promote demo-app -n demo-app --full
-
-# Reset to stable version
-kubectl argo rollouts set image demo-app -n demo-app \
-  demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable
-
-# Or use kubectl set image
-kubectl set image rollout/demo-app demo-app=ghcr.io/kdubois/argo-rollouts-quarkus-demo:v1.stable -n demo-app
-```
-
-### Clean Up Analysis Runs
-
-```bash
-# Delete old AnalysisRuns
-kubectl delete analysisrun -n demo-app --all
-
-# Or keep only recent ones
-kubectl delete analysisrun -n demo-app \
-  $(kubectl get analysisrun -n demo-app -o name | head -n -3)
-```
-
----
-
-## Troubleshooting
-
-### Demo Not Working
-
-#### Rollout Stuck in Paused State
-
-**Symptoms**: The rollout shows "Paused" status but doesn't progress to the next step.
-
-**Solutions**:
-```bash
-# Check if analysis is running
-kubectl get analysisrun -n demo-app
-
-# Check AI plugin logs
-kubectl logs -n argo-rollouts deployment/argo-rollouts | grep -i "metric-ai"
-
-# Check Kubernetes Agent health
-kubectl get pods -n argo-rollouts | grep kubernetes-agent
-kubectl logs -n argo-rollouts deployment/kubernetes-agent | tail -50
-
-# Manual promotion if needed
-kubectl argo rollouts promote demo-app -n demo-app
-```
-
-#### AnalysisRun Failing
-
-**Symptoms**: The AnalysisRun shows "Error" or "Inconclusive" status.
-
-**Solutions**:
-```bash
-# Check AnalysisRun details
-kubectl describe analysisrun -n demo-app $(kubectl get analysisrun -n demo-app -o name | tail -1)
-
-# Check if agent is reachable
-kubectl exec -n argo-rollouts deployment/argo-rollouts -- \
-  curl -s http://kubernetes-agent.argo-rollouts.svc.cluster.local:8080/a2a/health
-
-# Check agent logs for errors
-kubectl logs -n argo-rollouts deployment/kubernetes-agent | grep -i error
-
-# Verify API keys are configured
-kubectl get secret kubernetes-agent -n argo-rollouts -o yaml
-```
-
-#### No Canary Pods Created
-
-**Symptoms**: The rollout updates but no canary pods appear in the cluster.
-
-**Solutions**:
-```bash
-# Check rollout strategy
-kubectl get rollout demo-app -n demo-app -o yaml | grep -A 20 strategy
-
-# Check for resource constraints
-kubectl describe nodes | grep -A 5 "Allocated resources"
-
-# Check events
-kubectl get events -n demo-app --sort-by='.lastTimestamp' | tail -20
-
-# Verify service mesh injection
-kubectl get pods -n demo-app -o yaml | grep "sidecar.istio.io/inject"
-```
-
-### Presentation Issues
-
-#### Terminal Not Updating
-
-**Solution**:
-```bash
-# Restart watch commands
-# Terminal 1:
-kubectl argo rollouts get rollout demo-app -n demo-app --watch
-
-# Terminal 2:
-watch -n 2 'kubectl get pods -n demo-app -o wide'
-```
-
-#### Can't Access Application
-
-**Solution**:
-```bash
-# Check services
-kubectl get svc -n demo-app
-
-# Port forward to stable service
-kubectl port-forward -n demo-app svc/demo-app-stable 8080:8080
-
-# Or use Istio gateway
-kubectl get gateway -n demo-app
-kubectl get virtualservice -n demo-app
-```
-
-#### GitHub PR Not Created
-
-**Solution**:
-```bash
-# Check if GitHub token is configured
-kubectl get secret kubernetes-agent -n argo-rollouts -o jsonpath='{.data.GITHUB_TOKEN}' | base64 -d
-
-# Check agent logs for GitHub errors
-kubectl logs -n argo-rollouts deployment/kubernetes-agent | grep -i github
-
-# Verify GitHub URL in AnalysisTemplate
-kubectl get analysistemplate ai-analysis -n demo-app -o yaml | grep githubUrl
-```
-
-### Emergency Procedures
-
-#### Demo Completely Broken
-
-If the demo is completely broken and you need to start fresh:
-
-```bash
-# Delete and recreate everything
-kubectl delete namespace demo-app
-
-# Argo CD recreates the workload from the progressive-delivery repository;
-# force the resync with:
-argocd app sync quarkus-rollouts-demo
-
-# Wait for healthy state
-kubectl wait --for=condition=available --timeout=300s \
-  rollout/demo-app -n demo-app
-```
-
-#### Need to Skip AI Analysis
-
-If you need to bypass the AI analysis temporarily:
-
-```bash
-# Temporarily disable analysis
-kubectl patch rollout demo-app -n demo-app --type merge -p '
-{
-  "spec": {
-    "strategy": {
-      "canary": {
-        "analysis": null
-      }
-    }
-  }
-}'
-
-# Manual promotion
-kubectl argo rollouts promote demo-app -n demo-app --full
-```
-
----
-
-## Presentation Tips
-
-### Timing
-
-The introduction should take 3-5 minutes. The happy path demo should take 8-10 minutes. The failure scenario should take 10-12 minutes. The latency drift demo should take 5-7 minutes. Reserve 5-10 minutes for Q&A. The total presentation should be 30-45 minutes.
-
-### Engagement
-
-Ask the audience questions throughout the presentation. Show enthusiasm about the intersection of AI and Kubernetes. Relate the demo to real-world scenarios that the audience has experienced. Emphasize the safety and automation aspects. Highlight that this is open source technology available today.
-
-### Backup Plans
-
-Have screenshots ready if the live demo fails. Prepare a video recording as a fallback option. Keep reset commands easily accessible. Have the troubleshooting guide open in a browser tab.
-
-### Key Messages to Reinforce
-
-The AI makes deployment decisions, not just monitoring. The system performs autonomous remediation by creating pull requests automatically. This is production-ready technology built on a CNCF graduated project. The entire solution is open source and available today on GitHub. The system is safe by design with canary deployments and automatic rollback.
-
----
-
-## Success Criteria
-
-Your demo is successful if the audience understands how AI analyzes deployments, sees the value of autonomous progressive delivery, knows how to get started with the plugin, asks thoughtful questions about implementation, and leaves excited about AI and Kubernetes.
-
----
-
-## Additional Resources
-
-- **Demo App Repository**: https://github.com/kdubois/argo-rollouts-quarkus-demo
-- **Deployment Guide**: [DEPLOYMENT.md](DEPLOYMENT.md)
-- **Argo Rollouts Docs**: https://argo-rollouts.readthedocs.io/
-- **AI Plugin**: https://github.com/kdubois/rollouts-plugin-metric-ai
-- **Kubernetes Agent**: https://github.com/kdubois/kubernetes-aiops-agent
-
----
-
-**Good luck with your presentation!**
-
-*Remember: The goal is to inspire the audience about the future of AI-powered deployments, not to show every technical detail.*
+**The latency scenario passes twice**: the drift starts 20 seconds after pod start. If the canary was already warm, the second measurement may still be inside the grace period. Retry the rollout rather than editing the manifest mid-demo.
